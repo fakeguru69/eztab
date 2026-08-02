@@ -1,0 +1,2291 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EZTaby</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Manrope:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#F3EFFF;
+    --paper:#1E1830;
+    --sand:#120D1E;
+    --sand-2:#241B3D;
+    --border:#3D3160;
+    --moss:#2EE6A6;
+    --moss-soft:#12332B;
+    --rust:#FF5A52;
+    --rust-soft:#3A1B22;
+    --gold:#FFC24E;
+    --muted:#A79BD1;
+    --brand:#8A63FF;
+    --brand-2:#C084FF;
+    --shadow: 0 1px 2px rgba(0,0,0,0.5), 0 10px 32px rgba(138,99,255,0.35);
+  }
+  *{box-sizing:border-box;}
+  html,body{height:100%;}
+  body{
+    margin:0;
+    font-family:'Manrope',sans-serif;
+    background:var(--sand);
+    color:var(--ink);
+    -webkit-font-smoothing:antialiased;
+  }
+  .amt{font-family:'JetBrains Mono',monospace;font-weight:500;letter-spacing:-0.2px;}
+  #app{display:flex;height:100vh;overflow:hidden;}
+
+  /* ---------- Sidebar ---------- */
+  .sidebar{
+    width:290px;
+    min-width:290px;
+    background:var(--paper);
+    border-right:1px solid var(--border);
+    display:flex;
+    flex-direction:column;
+    height:100%;
+  }
+  .brand{
+    padding:24px 22px 18px;
+    border-bottom:1px solid var(--border);
+  }
+  .brand-top{
+    display:flex;
+    align-items:flex-start;
+    justify-content:space-between;
+    gap:10px;
+  }
+  .brand-text{min-width:0;}
+  .brand-mark{
+    font-family:'Space Grotesk',sans-serif;
+    font-weight:700;
+    font-size:22px;
+    letter-spacing:-0.2px;
+    line-height:1.15;
+    background:linear-gradient(120deg, var(--brand) 0%, #C24FE0 50%, var(--gold) 100%);
+    -webkit-background-clip:text;
+    background-clip:text;
+    color:transparent;
+  }
+  .brand-tagline{
+    font-family:'Manrope',sans-serif;
+    font-size:10px;
+    font-weight:700;
+    letter-spacing:0.14em;
+    text-transform:uppercase;
+    color:var(--muted);
+    margin-top:4px;
+  }
+  .guru-seal{width:44px;height:44px;flex:none;position:relative;}
+  .guru-seal svg{width:100%;height:100%;animation:seal-spin 18s linear infinite;}
+  @media (prefers-reduced-motion: reduce){ .guru-seal svg{animation:none;} }
+  @keyframes seal-spin{ to{ transform:rotate(360deg);} }
+  .guru-seal .seal-ring{stroke:var(--gold);}
+  .guru-seal text{
+    font-family:'Manrope',sans-serif;
+    font-size:8px;
+    font-weight:700;
+    letter-spacing:0.5px;
+    fill:var(--muted);
+  }
+  .guru-seal .seal-center{
+    position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+    font-size:15px;
+  }
+  .overall{
+    margin-top:14px;
+    font-size:13px;
+    color:var(--muted);
+    line-height:1.5;
+  }
+  .overall b.amt{font-size:15px;}
+  .overall.owed b{color:var(--moss);}
+  .overall.owes b{color:var(--rust);}
+
+  .group-list{
+    flex:1;
+    overflow-y:auto;
+    padding:10px 12px;
+  }
+  .group-list-label{
+    font-size:11px;
+    text-transform:uppercase;
+    letter-spacing:0.08em;
+    color:var(--muted);
+    padding:10px 10px 6px;
+    font-weight:600;
+  }
+  .group-tab{
+    position:relative;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:8px;
+    padding:11px 12px 11px 16px;
+    margin-bottom:3px;
+    border-radius:8px;
+    cursor:pointer;
+    border:1px solid transparent;
+  }
+  .group-tab:hover{background:var(--sand);}
+  .group-tab.active{
+    background:var(--sand);
+    border-color:var(--border);
+  }
+  .group-tab.active::before{
+    content:"";
+    position:absolute;
+    left:0;top:9px;bottom:9px;
+    width:3px;
+    border-radius:2px;
+    background:var(--gold);
+  }
+  .group-tab-name{
+    font-weight:600;
+    font-size:14.5px;
+    overflow:hidden;
+    text-overflow:ellipsis;
+    white-space:nowrap;
+  }
+  .group-tab-sub{
+    font-size:12px;
+    color:var(--muted);
+    margin-top:1px;
+  }
+  .group-tab-delete{
+    opacity:0;
+    background:none;
+    border:none;
+    color:var(--muted);
+    cursor:pointer;
+    font-size:15px;
+    line-height:1;
+    padding:4px;
+    border-radius:5px;
+  }
+  .group-tab:hover .group-tab-delete{opacity:1;}
+  .group-tab-delete:hover{color:var(--rust);background:var(--rust-soft);}
+
+  .new-group-btn{
+    margin:6px 10px 14px;
+    padding:10px 14px;
+    border-radius:8px;
+    border:1.5px dashed var(--border);
+    background:transparent;
+    color:var(--muted);
+    font-family:'Manrope',sans-serif;
+    font-weight:600;
+    font-size:13.5px;
+    cursor:pointer;
+    text-align:left;
+  }
+  .new-group-btn:hover{border-color:var(--gold);color:var(--ink);background:var(--sand);}
+
+  /* ---------- Main ---------- */
+  .main{flex:1;display:flex;flex-direction:column;height:100%;overflow:hidden;}
+  .topbar{
+    padding:26px 36px 0;
+    border-bottom:1px solid var(--border);
+    background:var(--sand);
+  }
+  .topbar-row{display:flex;align-items:flex-start;justify-content:space-between;gap:20px;}
+  .group-title{
+    font-family:'Space Grotesk',sans-serif;
+    font-weight:700;
+    font-size:30px;
+    margin:0 0 4px;
+    letter-spacing:-0.4px;
+    cursor:pointer;
+  }
+  .group-title:hover{color:var(--brand-2);}
+  .breadcrumb{
+    font-size:12px;font-weight:700;color:var(--muted);
+    text-transform:uppercase;letter-spacing:0.06em;
+    cursor:pointer;margin-bottom:6px;
+  }
+  .breadcrumb:hover{color:var(--brand-2);}
+  .member-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:18px;}
+  .avatar{
+    width:26px;height:26px;border-radius:50%;
+    display:flex;align-items:center;justify-content:center;
+    font-size:11px;font-weight:700;color:#fff;
+    font-family:'Manrope',sans-serif;
+    flex:none;
+    box-shadow:0 0 0 3px var(--sand), 0 0 0 4.5px rgba(138,99,255,0.45);
+  }
+  .member-row .member-name{font-size:12.5px;color:var(--muted);}
+  .member-chip{
+    display:flex;align-items:center;gap:6px;
+    background:none;border:1px solid transparent;border-radius:20px;
+    padding:2px 10px 2px 2px;cursor:pointer;
+    font-family:'Manrope',sans-serif;font-size:12.5px;font-weight:600;color:var(--ink);
+  }
+  .member-chip:hover{background:var(--sand-2);border-color:var(--border);}
+  .add-member-chip{
+    font-size:12px;color:var(--muted);
+    border:1px dashed var(--border);
+    border-radius:20px;
+    padding:3px 10px;
+    cursor:pointer;
+    background:none;
+  }
+  .add-member-chip:hover{border-color:var(--gold);color:var(--ink);}
+
+  .tabs{display:flex;gap:4px;}
+  .tab-btn{
+    padding:9px 4px 12px;
+    background:none;border:none;
+    font-family:'Manrope',sans-serif;
+    font-weight:600;font-size:14px;
+    color:var(--muted);
+    cursor:pointer;
+    border-bottom:2px solid transparent;
+    margin-right:22px;
+  }
+  .tab-btn.active{color:var(--ink);border-bottom-color:var(--brand);}
+
+  .btn-primary{
+    background:linear-gradient(120deg, var(--brand), var(--brand-2));
+    color:#fff;
+    border:none;border-radius:8px;
+    padding:10px 16px;
+    font-family:'Manrope',sans-serif;font-weight:700;font-size:13.5px;
+    cursor:pointer;
+    box-shadow:0 6px 16px rgba(108,79,242,0.28);
+  }
+  .btn-primary:hover{filter:brightness(1.06);}
+  .btn-secondary{
+    background:transparent;color:var(--ink);
+    border:1px solid var(--border);border-radius:8px;
+    padding:9px 15px;
+    font-family:'Manrope',sans-serif;font-weight:600;font-size:13.5px;
+    cursor:pointer;
+  }
+  .btn-secondary:hover{border-color:var(--ink);}
+
+  .content{flex:1;overflow-y:auto;padding:26px 36px 60px;}
+
+  /* ---------- Expense receipt rows ---------- */
+  .expense-list{display:flex;flex-direction:column;gap:0;}
+  .expense-row{
+    background:var(--paper);
+    border:1px solid var(--border);
+    border-radius:10px;
+    padding:16px 18px;
+    display:flex;
+    align-items:center;
+    gap:16px;
+    margin-bottom:12px;
+    position:relative;
+    cursor:pointer;
+    transition:border-color .15s;
+  }
+  .expense-row:hover{border-color:var(--brand-2);}
+  .expense-row.settlement{cursor:default;}
+  .expense-row.settlement:hover{border-color:var(--border);}
+  .expense-row.settlement{
+    background:var(--moss-soft);
+    border-style:dashed;
+  }
+  .expense-stamp{
+    width:42px;height:42px;border-radius:50%;
+    border:2px dashed currentColor;
+    display:flex;align-items:center;justify-content:center;
+    font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:14px;
+    transform:rotate(-6deg);
+    flex:none;
+  }
+  .expense-main{flex:1;min-width:0;}
+  .expense-desc{font-weight:600;font-size:15px;margin-bottom:2px;}
+  .expense-meta{font-size:12.5px;color:var(--muted);}
+  .expense-amt-col{text-align:right;flex:none;}
+  .expense-amt{font-size:17px;}
+  .expense-share{font-size:11.5px;color:var(--muted);margin-top:2px;}
+  .expense-del{
+    background:none;border:none;color:var(--muted);
+    cursor:pointer;font-size:16px;padding:4px;border-radius:6px;flex:none;
+  }
+  .expense-del:hover{color:var(--rust);background:var(--rust-soft);}
+  .day-divider{
+    font-size:11px;text-transform:uppercase;letter-spacing:0.08em;
+    color:var(--muted);font-weight:600;
+    margin:22px 0 10px;
+  }
+  .day-divider:first-child{margin-top:0;}
+
+  /* ---------- Balances tab ---------- */
+  .balance-card{
+    background:var(--paper);border:1px solid var(--border);
+    border-radius:10px;padding:16px 18px;
+    display:flex;align-items:center;justify-content:space-between;
+    margin-bottom:10px;
+  }
+  .balance-who{display:flex;align-items:center;gap:12px;font-weight:600;font-size:14.5px;}
+  .balance-amt.pos{color:var(--moss);}
+  .balance-amt.neg{color:var(--rust);}
+  .balance-sub{font-size:11.5px;color:var(--muted);font-weight:500;}
+
+  .section-label{
+    font-size:11px;text-transform:uppercase;letter-spacing:0.08em;
+    color:var(--muted);font-weight:700;margin:28px 0 12px;
+  }
+  .section-label:first-child{margin-top:0;}
+
+  .settle-row{
+    background:var(--paper);border:1px solid var(--border);
+    border-radius:10px;padding:14px 18px;
+    display:flex;align-items:center;justify-content:space-between;
+    margin-bottom:10px;
+  }
+  .settle-text{font-size:14px;}
+  .settle-text .amt{color:var(--rust);font-weight:600;}
+  .settle-btn{
+    background:var(--moss);color:#fff;border:none;border-radius:7px;
+    padding:7px 13px;font-family:'Manrope',sans-serif;font-weight:600;font-size:12.5px;
+    cursor:pointer;
+  }
+  .settle-btn:hover{background:#2f6249;}
+
+  .empty-state{
+    text-align:center;padding:70px 20px;color:var(--muted);
+  }
+  .empty-state h3{
+    font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:22px;color:var(--ink);
+    margin-bottom:8px;
+  }
+  .empty-state p{font-size:14px;max-width:340px;margin:0 auto 18px;line-height:1.5;}
+
+  .empty-app{
+    display:flex;flex-direction:column;align-items:center;justify-content:center;
+    height:100%;text-align:center;padding:40px;
+  }
+  .empty-app h1{
+    font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:34px;margin-bottom:10px;
+  }
+  .empty-app p{color:var(--muted);max-width:380px;line-height:1.6;margin-bottom:22px;}
+
+  /* ---------- Home menu (choose a gathering) ---------- */
+  .home-grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fill, minmax(220px, 1fr));
+    gap:14px;
+  }
+  .home-card{
+    position:relative;
+    background:var(--paper);
+    border:1px solid var(--border);
+    border-radius:12px;
+    padding:18px;
+    text-align:left;
+    cursor:pointer;
+    box-shadow:var(--shadow);
+    transition:border-color .15s, transform .15s;
+    font-family:'Manrope',sans-serif;
+    color:var(--ink);
+  }
+  .home-card:hover{border-color:var(--brand-2);transform:translateY(-2px);}
+  .home-card-name{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:17px;margin-bottom:6px;padding-right:20px;}
+  .home-card-sub{font-size:13px;color:var(--muted);margin-bottom:14px;}
+  .home-card-sub.pos{color:var(--moss);}
+  .home-card-sub.neg{color:var(--rust);}
+  .home-card-members{display:flex;align-items:center;gap:-4px;}
+  .avatar-sm{width:24px;height:24px;font-size:10px;margin-right:-6px;}
+  .home-card-more{font-size:11px;color:var(--muted);margin-left:10px;}
+  .home-card-delete{
+    position:absolute;top:14px;right:14px;
+    background:none;border:none;color:var(--muted);
+    cursor:pointer;font-size:14px;padding:4px;border-radius:6px;line-height:1;
+  }
+  .home-card-delete:hover{color:var(--rust);background:var(--rust-soft);}
+  .home-card-new{
+    display:flex;flex-direction:column;align-items:center;justify-content:center;
+    gap:6px;
+    border:1.5px dashed var(--border);
+    background:transparent;
+    color:var(--muted);
+    box-shadow:none;
+    font-weight:600;font-size:13.5px;
+  }
+  .home-card-new:hover{border-color:var(--gold);color:var(--ink);background:var(--sand-2);transform:none;}
+  .home-card-new-plus{font-size:26px;line-height:1;color:var(--brand-2);}
+
+  /* ---------- Modal ---------- */
+  .modal-backdrop{
+    position:fixed;inset:0;background:rgba(0,0,0,0.65);
+    display:flex;align-items:center;justify-content:center;
+    z-index:50;padding:20px;
+  }
+  .modal{
+    background:var(--paper);border-radius:14px;
+    width:100%;max-width:440px;
+    box-shadow:0 12px 40px rgba(0,0,0,0.6);
+    max-height:88vh;overflow-y:auto;
+  }
+  .modal-head{
+    padding:20px 24px 14px;border-bottom:1px solid var(--border);
+    display:flex;align-items:center;justify-content:space-between;
+  }
+  .modal-head h2{
+    font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:20px;margin:0;
+  }
+  .modal-close{background:none;border:none;font-size:20px;color:var(--muted);cursor:pointer;line-height:1;}
+  .modal-body{padding:20px 24px;}
+  .modal-foot{padding:16px 24px 22px;display:flex;justify-content:flex-end;gap:10px;}
+
+  .field{margin-bottom:16px;}
+  .field label{
+    display:block;font-size:12.5px;font-weight:600;color:var(--muted);margin-bottom:6px;
+    text-transform:uppercase;letter-spacing:0.05em;
+  }
+  .field input[type=text], .field input[type=number], .field select{
+    width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:8px;
+    font-family:'Manrope',sans-serif;font-size:14.5px;background:var(--sand-2);color:var(--ink);
+  }
+  .field input:focus, .field select:focus{outline:2px solid var(--gold);outline-offset:1px;}
+  .amount-input-wrap{position:relative;}
+  .amount-input-wrap span{
+    position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--muted);font-family:'JetBrains Mono',monospace;
+  }
+  .amount-input-wrap input{padding-left:26px !important;font-family:'JetBrains Mono',monospace;}
+
+  .toggle-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;}
+  .toggle-row label{margin-bottom:0;text-transform:none;font-size:14px;font-weight:600;color:var(--ink);letter-spacing:0;}
+  .switch{position:relative;width:42px;height:24px;flex:none;display:inline-block;cursor:pointer;}
+  .switch input{position:absolute;opacity:0;width:100%;height:100%;margin:0;cursor:pointer;}
+  .switch .track{position:absolute;inset:0;background:var(--border);border-radius:20px;transition:background .15s;pointer-events:none;}
+  .switch input:checked + .track{background:var(--moss);}
+  .switch .thumb{position:absolute;top:3px;left:3px;width:18px;height:18px;background:#fff;border-radius:50%;transition:transform .15s;box-shadow:0 1px 2px rgba(0,0,0,0.25);pointer-events:none;}
+  .switch input:checked ~ .thumb{transform:translateX(18px);}
+  .tax-rates-row{display:flex;gap:10px;margin-bottom:10px;}
+  .tax-rates-row .field{flex:1;margin-bottom:0;}
+  .tax-breakdown{background:var(--sand);border:1px solid var(--border);border-radius:8px;padding:10px 12px;font-size:12.5px;color:var(--muted);margin-bottom:4px;font-family:'JetBrains Mono',monospace;}
+  .tax-breakdown .tb-row{display:flex;justify-content:space-between;padding:2px 0;}
+  .tax-breakdown .tb-total{color:var(--ink);font-weight:700;border-top:1px dashed var(--border);margin-top:4px;padding-top:6px;}
+  .split-toggle{display:flex;gap:6px;margin-bottom:12px;}
+  .split-toggle button{
+    flex:1;padding:8px;border:1px solid var(--border);background:var(--sand-2);border-radius:7px;
+    font-family:'Manrope',sans-serif;font-size:13px;font-weight:600;color:var(--muted);cursor:pointer;
+  }
+  .split-toggle button.active{background:var(--ink);color:var(--paper);border-color:var(--ink);}
+
+  .participant-row{
+    display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border);
+  }
+  .participant-row:last-child{border-bottom:none;}
+  .participant-row label{
+    flex:1;display:flex;align-items:center;gap:9px;font-size:14px;font-weight:500;
+    text-transform:none;letter-spacing:0;color:var(--ink);cursor:pointer;
+  }
+  .participant-row input[type=checkbox]{width:16px;height:16px;accent-color:var(--moss);}
+  .participant-row input[type=number]{
+    width:88px;padding:6px 8px;border:1px solid var(--border);border-radius:6px;
+    font-family:'JetBrains Mono',monospace;font-size:13px;text-align:right;
+  }
+  .split-total-row{
+    display:flex;justify-content:space-between;font-size:13px;margin-top:10px;padding-top:10px;
+    border-top:1px dashed var(--border);color:var(--muted);
+  }
+  .split-total-row.err{color:var(--rust);font-weight:600;}
+
+  .chips-hint{font-size:12px;color:var(--muted);margin-top:6px;}
+
+  ::-webkit-scrollbar{width:9px;height:9px;}
+  ::-webkit-scrollbar-thumb{background:var(--border);border-radius:8px;}
+  ::-webkit-scrollbar-track{background:transparent;}
+
+  @media (max-width:760px){
+    #app{flex-direction:column;}
+    .sidebar{width:100%;min-width:0;height:auto;max-height:40vh;border-right:none;border-bottom:1px solid var(--border);}
+    .topbar{padding:20px 18px 0;}
+    .content{padding:20px 18px 40px;}
+  }
+  [hidden]{display:none !important;}
+</style>
+
+<style>
+  .share-bar{
+    display:flex;align-items:center;gap:8px;flex-wrap:wrap;
+    background:var(--sand-2);border:1px solid var(--border);border-radius:10px;
+    padding:10px 12px;margin-bottom:16px;
+  }
+  .share-link-text{
+    font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--muted);
+    flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+  }
+  .share-btn-sm{
+    background:var(--sand);border:1px solid var(--border);color:var(--ink);
+    border-radius:7px;padding:6px 10px;font-family:'Manrope',sans-serif;font-weight:600;
+    font-size:12px;cursor:pointer;flex:none;
+  }
+  .share-btn-sm:hover{border-color:var(--gold);}
+  .claim-banner{
+    display:flex;align-items:center;justify-content:space-between;gap:10px;
+    background:var(--rust-soft);border:1px solid var(--rust);border-radius:10px;
+    padding:10px 14px;margin-bottom:16px;font-size:13px;
+  }
+  .claim-banner button{flex:none;}
+  .home-wrap{max-width:720px;margin:0 auto;padding:40px 20px;}
+  .account-box{
+    background:var(--paper);border:1px solid var(--border);border-radius:12px;
+    padding:16px 18px;margin-bottom:26px;
+  }
+  .account-row{display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:14px;flex-wrap:wrap;}
+  .home-recent-list{display:flex;flex-direction:column;gap:8px;margin-bottom:26px;}
+  .home-recent-item{
+    display:flex;align-items:center;justify-content:space-between;gap:10px;
+    background:var(--paper);border:1px solid var(--border);border-radius:10px;
+    padding:14px 16px;cursor:pointer;
+  }
+  .home-recent-item:hover{border-color:var(--brand-2);}
+  .home-recent-name{font-weight:600;font-size:14.5px;}
+  .join-row{display:flex;gap:8px;margin-top:6px;}
+  .join-row input{flex:1;}
+  .claim-member-btn{
+    display:flex;align-items:center;gap:10px;width:100%;text-align:left;
+    background:var(--sand-2);border:1px solid var(--border);border-radius:8px;
+    padding:10px 12px;margin-bottom:8px;cursor:pointer;color:var(--ink);
+    font-family:'Manrope',sans-serif;font-size:14px;font-weight:600;
+  }
+  .claim-member-btn:hover{border-color:var(--gold);}
+  .skip-claim{
+    display:block;width:100%;text-align:center;background:none;border:none;
+    color:var(--muted);font-size:12.5px;padding:10px 0 0;cursor:pointer;text-decoration:underline;
+  }
+  .load-error{max-width:420px;margin:60px auto;text-align:center;color:var(--muted);}
+</style>
+</head>
+<body>
+<div id="app"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script>
+(function(){
+  "use strict";
+
+  // ============== SUPABASE SETUP ==============
+  const SUPABASE_URL = "https://hiypdbbywxrwqgzpmgux.supabase.co";
+  const SUPABASE_KEY = "sb_publishable_J-Z4-Pp-vgTg7TlFle1NBQ_Zy9sItNg";
+  const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+  const CURRENCIES = ["USD","EUR","GBP","JPY","AUD","SGD","THB","MYR","IDR","VND","KRW","CNY","INR","NZD","CAD","CHF","HKD","PHP"];
+
+  const AVATAR_COLORS = ["#3C7A5D","#B5482E","#B5893C","#3A6B7A","#7A5468","#5C6B3A"];
+
+  function uid(prefix){ return prefix + "_" + Date.now().toString(36) + Math.random().toString(36).slice(2,8); }
+  function fmt(n, currency){
+    currency = currency || (state.gathering && state.gathering.settlement_currency) || "USD";
+    const sign = n < 0 ? "-" : "";
+    try{
+      return sign + new Intl.NumberFormat(undefined, {style:"currency", currency}).format(Math.abs(n));
+    }catch(e){
+      return sign + currency + " " + Math.abs(n).toFixed(2);
+    }
+  }
+  function colorFor(id){
+    let h = 0;
+    for(let i=0;i<id.length;i++) h = (h*31 + id.charCodeAt(i)) >>> 0;
+    return AVATAR_COLORS[h % AVATAR_COLORS.length];
+  }
+  function computeTotal(subtotal, enabled, servicePct, gstPct){
+    subtotal = subtotal || 0;
+    if(!enabled || subtotal <= 0) return {subtotal, service:0, gst:0, total: Math.round(subtotal*100)/100};
+    const service = Math.round(subtotal * (servicePct/100) * 100)/100;
+    const afterService = subtotal + service;
+    const gst = Math.round(afterService * (gstPct/100) * 100)/100;
+    const total = Math.round((afterService + gst) * 100)/100;
+    return {subtotal, service, gst, total};
+  }
+  function initials(name){
+    return name.trim().split(/\s+/).map(w=>w[0]).slice(0,2).join("").toUpperCase();
+  }
+  function escapeHtml(s){
+    return String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+  }
+  function slugify(s){
+    return (s||"").toLowerCase().trim().replace(/[^a-z0-9]+/g,"-").replace(/(^-+|-+$)/g,"") || "trip";
+  }
+
+  // ============== LOCAL DEVICE STORAGE (recents + identity only) ==============
+  function getRecents(){
+    try{ return JSON.parse(localStorage.getItem("gd_recents_v1")) || []; }catch(e){ return []; }
+  }
+  function addRecent(g){
+    let list = getRecents().filter(r => r.id !== g.id);
+    list.unshift({id:g.id, slug:g.slug, name:g.name});
+    localStorage.setItem("gd_recents_v1", JSON.stringify(list.slice(0,20)));
+  }
+  function removeRecent(id){
+    localStorage.setItem("gd_recents_v1", JSON.stringify(getRecents().filter(r=>r.id!==id)));
+  }
+  function getIdentity(gid){ return localStorage.getItem("gd_identity_"+gid); }
+  function setIdentity(gid, memberId){ localStorage.setItem("gd_identity_"+gid, memberId); }
+  function getTaxDefaults(){
+    try{ return JSON.parse(localStorage.getItem("gd_taxdefaults_v1")) || {service:10,gst:9}; }catch(e){ return {service:10,gst:9}; }
+  }
+  function setTaxDefaults(v){ localStorage.setItem("gd_taxdefaults_v1", JSON.stringify(v)); }
+
+  // ============== STATE ==============
+  let state = {
+    gathering: null,
+    members: [],
+    expenses: [],
+    myMemberId: null,
+    activeTab: "expenses",
+    modal: null,
+    loaded: false,
+    loadError: null,
+    taxDefaults: getTaxDefaults(),
+    saving: false,
+    username: null,
+    myEvents: [],
+    authUI: {mode:"signin", error:null, question:null, forgotUsername:null, onSuccessAction:"home"},
+    showAuthOnHome: false
+  };
+
+  // ============== SUPABASE DATA LAYER ==============
+  function mapExpenseRow(r){
+    const amount = Number(r.amount);
+    const exchangeRate = Number(r.exchange_rate || 1);
+    const settlementAmount = Math.round(amount * exchangeRate * 100)/100;
+    let paidBy;
+    if(Array.isArray(r.paid_by)){
+      paidBy = r.paid_by;
+    } else if(typeof r.paid_by === "string"){
+      paidBy = [{memberId: r.paid_by, amount: settlementAmount}];
+    } else {
+      paidBy = [];
+    }
+    return {
+      id: r.id,
+      desc: r.description,
+      amount: amount,
+      currency: r.currency || "USD",
+      exchangeRate: exchangeRate,
+      settlementAmount: settlementAmount,
+      category: r.category,
+      paidBy: paidBy,
+      split: r.split || [],
+      splitType: r.split_type || "equal",
+      taxApplied: r.tax_applied,
+      taxService: r.tax_service,
+      taxGst: r.tax_gst,
+      subtotal: r.subtotal,
+      settlement: r.is_settlement,
+      expenseDate: r.expense_date,
+      date: r.expense_date ? new Date(r.expense_date + "T00:00:00").getTime() : new Date(r.created_at).getTime()
+    };
+  }
+
+  async function fetchGatheringBySlug(slug){
+    const {data: g, error} = await sb.from("gatherings").select("*").eq("slug", slug).maybeSingle();
+    if(error || !g) return null;
+    const {data: members} = await sb.from("members").select("*").eq("gathering_id", g.id).order("created_at");
+    const {data: expenses} = await sb.from("expenses").select("*").eq("gathering_id", g.id).order("created_at");
+    return {
+      gathering: g,
+      members: (members||[]).map(m => ({id:m.id, name:m.name, claimedUsername:m.claimed_username})),
+      expenses: (expenses||[]).map(mapExpenseRow)
+    };
+  }
+
+  async function refreshData(){
+    if(!state.gathering) return;
+    const {data: members} = await sb.from("members").select("*").eq("gathering_id", state.gathering.id).order("created_at");
+    const {data: expenses} = await sb.from("expenses").select("*").eq("gathering_id", state.gathering.id).order("created_at");
+    state.members = (members||[]).map(m => ({id:m.id, name:m.name, claimedUsername:m.claimed_username}));
+    state.expenses = (expenses||[]).map(mapExpenseRow);
+    if(!state.modal) render();
+  }
+
+  function subscribeRealtime(gatheringId){
+    sb.channel("gathering-"+gatheringId)
+      .on("postgres_changes", {event:"*", schema:"public", table:"members", filter:"gathering_id=eq."+gatheringId}, refreshData)
+      .on("postgres_changes", {event:"*", schema:"public", table:"expenses", filter:"gathering_id=eq."+gatheringId}, refreshData)
+      .subscribe();
+  }
+
+  async function generateUniqueSlug(base){
+    base = slugify(base);
+    for(let i=0;i<6;i++){
+      const candidate = i===0 ? base : base + "-" + Math.random().toString(36).slice(2,6);
+      const {data} = await sb.from("gatherings").select("id").eq("slug", candidate).maybeSingle();
+      if(!data) return candidate;
+    }
+    return base + "-" + Date.now().toString(36);
+  }
+
+  async function fetchWithTimeout(url, ms){
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), ms);
+    try{
+      const res = await fetch(url, {signal: controller.signal});
+      clearTimeout(timer);
+      return res;
+    }catch(e){
+      clearTimeout(timer);
+      throw e;
+    }
+  }
+
+  async function getExchangeRate(from, to){
+    if(from === to) return 1;
+    // Try the primary endpoint, then a fallback, each with a short timeout so the UI never hangs.
+    try{
+      const res = await fetchWithTimeout(`https://api.frankfurter.dev/v1/latest?base=${from}&symbols=${to}`, 6000);
+      const data = await res.json();
+      if(data && data.rates && data.rates[to]) return data.rates[to];
+    }catch(e){}
+    try{
+      const res = await fetchWithTimeout(`https://api.frankfurter.app/latest?amount=1&from=${from}&to=${to}`, 6000);
+      const data = await res.json();
+      if(data && data.rates && data.rates[to]) return data.rates[to];
+    }catch(e){}
+    return null; // both attempts failed — caller decides how to handle this
+  }
+
+  // ============== BALANCE MATH ==============
+  function computeNet(){
+    const net = {};
+    state.members.forEach(m => net[m.id] = 0);
+    state.expenses.forEach(e => {
+      e.paidBy.forEach(p => { net[p.memberId] = (net[p.memberId] || 0) + p.amount; });
+      e.split.forEach(s => { net[s.memberId] = (net[s.memberId] || 0) - s.amount; });
+    });
+    Object.keys(net).forEach(k => net[k] = Math.round(net[k]*100)/100);
+    return net;
+  }
+
+  function simplifyDebts(){
+    const net = computeNet();
+    const creditors = [], debtors = [];
+    Object.entries(net).forEach(([id, amt]) => {
+      if(amt > 0.005) creditors.push({id, amt});
+      else if(amt < -0.005) debtors.push({id, amt: -amt});
+    });
+    creditors.sort((a,b)=>b.amt-a.amt);
+    debtors.sort((a,b)=>b.amt-a.amt);
+    const txns = [];
+    let ci=0, di=0;
+    while(ci < creditors.length && di < debtors.length){
+      const c = creditors[ci], d = debtors[di];
+      const amt = Math.min(c.amt, d.amt);
+      if(amt > 0.005) txns.push({from:d.id, to:c.id, amount: Math.round(amt*100)/100});
+      c.amt -= amt; d.amt -= amt;
+      if(c.amt <= 0.005) ci++;
+      if(d.amt <= 0.005) di++;
+    }
+    return txns;
+  }
+
+  // ============== ROUTING ==============
+  function currentSlug(){
+    return new URLSearchParams(location.search).get("g");
+  }
+  function goToSlug(slug){
+    location.href = location.pathname + "?g=" + encodeURIComponent(slug);
+  }
+  function goHome(){
+    location.href = location.pathname;
+  }
+  function shareUrl(slug){
+    return location.origin + location.pathname + "?g=" + encodeURIComponent(slug);
+  }
+  function prettyShareUrl(slug){
+    // location.pathname already ends in "/" when index.html is served at the site root of the repo
+    let base = location.pathname;
+    if(!base.endsWith("/")) base = base.slice(0, base.lastIndexOf("/")+1);
+    return location.origin + base + encodeURIComponent(slug);
+  }
+
+  // ============== ACCOUNTS (username + PIN, verified server-side) ==============
+  function getSessionUsername(){ return localStorage.getItem("gd_session_username"); }
+  function setSessionUsername(u){ localStorage.setItem("gd_session_username", u); }
+  function clearSessionUsername(){ localStorage.removeItem("gd_session_username"); }
+
+  async function initUsername(){
+    state.username = getSessionUsername();
+    if(state.username) await loadMyEvents();
+  }
+
+  async function loadMyEvents(){
+    if(!state.username) { state.myEvents = []; return; }
+    const {data} = await sb.from("gatherings").select("*").eq("owner_username", state.username).order("created_at", {ascending:false});
+    state.myEvents = data || [];
+  }
+
+  async function acctSignUp(username, pin, question, answer){
+    const {data, error} = await sb.rpc("create_account", {p_username: username, p_pin: pin, p_question: question, p_answer: answer});
+    if(error) return {success:false, error:"network"};
+    return data;
+  }
+  async function acctLogIn(username, pin){
+    const {data, error} = await sb.rpc("login_account", {p_username: username, p_pin: pin});
+    if(error) return {success:false, error:"network"};
+    return data;
+  }
+  async function acctGetQuestion(username){
+    const {data, error} = await sb.rpc("get_security_question", {p_username: username});
+    if(error) return {success:false, error:"network"};
+    return data;
+  }
+  async function acctResetPin(username, answer, newPin){
+    const {data, error} = await sb.rpc("reset_pin_with_answer", {p_username: username, p_answer: answer, p_new_pin: newPin});
+    if(error) return {success:false, error:"network"};
+    return data;
+  }
+  function acctErrorText(err){
+    if(err === "not_found") return "No account with that username.";
+    if(err === "wrong_pin") return "Wrong PIN.";
+    if(err === "wrong_answer") return "That answer doesn't match.";
+    if(err === "username_taken") return "That username is already taken.";
+    if(err === "invalid_pin") return "PIN must be at least 4 digits.";
+    if(err === "invalid_input") return "Please fill in every field.";
+    if(err === "locked") return "Too many attempts — please wait a few minutes and try again.";
+    return "Something went wrong. Please try again.";
+  }
+
+  function refreshAuthUI(){
+    if(document.querySelector(".modal-backdrop")) renderModal();
+    else render();
+  }
+
+  function authEl(id){
+    const overlay = document.querySelector(".modal-backdrop");
+    if(overlay){
+      const el = overlay.querySelector("#"+id);
+      if(el) return el;
+    }
+    return document.getElementById(id);
+  }
+
+  async function onAuthSuccess(username){
+    setSessionUsername(username);
+    state.username = username;
+    await loadMyEvents();
+    const onSuccess = state.authUI.onSuccessAction;
+    state.authUI = {mode:"signin", error:null, question:null, forgotUsername:null, onSuccessAction:"home"};
+
+    if(onSuccess === "claim"){
+      const match = state.members.find(m => m.claimedUsername === username);
+      if(match){
+        setIdentity(state.gathering.id, match.id);
+        state.myMemberId = match.id;
+        closeModal();
+        render();
+      } else {
+        state.modal = {type:"claim", data:{step:"identity"}};
+        renderModal();
+      }
+    } else if(onSuccess === "open-new-group"){
+      state.modal = {type:"new-group"};
+      renderModal();
+    } else {
+      closeModal();
+      render();
+    }
+  }
+
+  // ============== BOOT ==============
+  async function boot(){
+    await initUsername();
+    const slug = currentSlug();
+    if(!slug){
+      state.loaded = true;
+      render();
+      return;
+    }
+    const result = await fetchGatheringBySlug(slug);
+    if(!result){
+      state.loaded = true;
+      state.loadError = "We couldn't find that Taby Event. The link may be mistyped, or it was deleted.";
+      render();
+      return;
+    }
+    state.gathering = result.gathering;
+    state.members = result.members;
+    state.expenses = result.expenses;
+    addRecent({id: result.gathering.id, slug: result.gathering.slug, name: result.gathering.name});
+    let identity = getIdentity(result.gathering.id);
+    if(!identity && state.username){
+      const usernameMatch = state.members.find(m => m.claimedUsername === state.username);
+      if(usernameMatch){
+        setIdentity(result.gathering.id, usernameMatch.id);
+        identity = usernameMatch.id;
+      }
+    }
+    state.myMemberId = identity || null;
+    state.loaded = true;
+    render();
+    subscribeRealtime(result.gathering.id);
+    if(!identity){
+      state.authUI = {mode:"signin", error:null, question:null, forgotUsername:null, onSuccessAction:"claim"};
+      state.modal = {type:"claim", data:{step: state.username ? "identity" : "username"}};
+      renderModal();
+    }
+  }
+
+  // ============== RENDERING ==============
+  const app = document.getElementById("app");
+
+  function render(){
+    if(!state.loaded){
+      app.innerHTML = `<div class="empty-app" style="width:100%;"><h1 class="brand-mark" style="font-size:34px;margin:0;">EZTaby</h1><p>Loading…</p></div>`;
+      return;
+    }
+    if(state.loadError){
+      app.innerHTML = `<div class="load-error"><h3 style="font-family:'Space Grotesk',sans-serif;color:var(--ink);">Taby Event not found</h3><p>${escapeHtml(state.loadError)}</p><button class="btn-primary" data-action="go-home">Back home</button></div>`;
+      bindGlobalHandlers();
+      return;
+    }
+    if(!state.gathering){
+      app.innerHTML = renderHome();
+      bindGlobalHandlers();
+      if(state.modal) renderModal();
+      return;
+    }
+    app.innerHTML = `
+      <div class="sidebar">${renderSidebar()}</div>
+      <div class="main">
+        ${renderTopbar()}
+        <div class="content">
+          ${state.activeTab === "expenses" ? renderExpenses() : renderBalances()}
+        </div>
+      </div>
+    `;
+    bindGlobalHandlers();
+    if(state.modal) renderModal();
+  }
+
+  function renderAuthForm(){
+    const a = state.authUI;
+    const err = a.error ? `<p style="color:var(--rust);font-size:13px;margin:0 0 10px;">${escapeHtml(a.error)}</p>` : "";
+
+    if(a.mode === "signup"){
+      return `
+        <div class="section-label">Create your account</div>
+        ${err}
+        <div class="field"><label>Username</label><input type="text" id="auth-username" placeholder="pick a username" autocomplete="off"></div>
+        <div class="field"><label>PIN (4+ digits)</label><input type="password" inputmode="numeric" id="auth-pin" placeholder="••••" maxlength="10"></div>
+        <div class="field"><label>Confirm PIN</label><input type="password" inputmode="numeric" id="auth-pin-confirm" placeholder="••••" maxlength="10"></div>
+        <div class="field"><label>Write your own security question</label><input type="text" id="auth-question" placeholder="e.g. what did I name my first pet?"></div>
+        <div class="field"><label>Your answer</label><input type="text" id="auth-answer" placeholder="answer"></div>
+        <button class="btn-primary" data-action="acct-signup" style="width:100%;margin-top:4px;">Create account</button>
+        <div style="text-align:center;margin-top:10px;">
+          <a href="#" data-action="auth-mode" data-mode="signin" style="color:var(--muted);font-size:12.5px;text-decoration:underline;">Already have an account? Sign in</a>
+        </div>
+      `;
+    }
+
+    if(a.mode === "forgot"){
+      if(!a.question){
+        return `
+          <div class="section-label">Forgot PIN</div>
+          ${err}
+          <div class="field"><label>Username</label><input type="text" id="auth-forgot-username" placeholder="your username"></div>
+          <button class="btn-primary" data-action="auth-forgot-lookup" style="width:100%;margin-top:4px;">Continue</button>
+          <div style="text-align:center;margin-top:10px;">
+            <a href="#" data-action="auth-mode" data-mode="signin" style="color:var(--muted);font-size:12.5px;text-decoration:underline;">← Back to sign in</a>
+          </div>
+        `;
+      }
+      return `
+        <div class="section-label">Forgot PIN</div>
+        ${err}
+        <p style="color:var(--muted);font-size:13px;margin:0 0 10px;">${escapeHtml(a.question)}</p>
+        <div class="field"><label>Your answer</label><input type="text" id="auth-answer" placeholder="answer"></div>
+        <div class="field"><label>New PIN (4+ digits)</label><input type="password" inputmode="numeric" id="auth-new-pin" placeholder="••••" maxlength="10"></div>
+        <div class="field"><label>Confirm new PIN</label><input type="password" inputmode="numeric" id="auth-new-pin-confirm" placeholder="••••" maxlength="10"></div>
+        <button class="btn-primary" data-action="acct-reset-pin" style="width:100%;margin-top:4px;">Reset PIN</button>
+        <div style="text-align:center;margin-top:10px;">
+          <a href="#" data-action="auth-mode" data-mode="signin" style="color:var(--muted);font-size:12.5px;text-decoration:underline;">← Back to sign in</a>
+        </div>
+      `;
+    }
+
+    // signin (default)
+    return `
+      <div class="section-label">Sign in</div>
+      ${err}
+      <div class="field"><label>Username</label><input type="text" id="auth-username" placeholder="your username" autocomplete="off"></div>
+      <div class="field"><label>PIN</label><input type="password" inputmode="numeric" id="auth-pin" placeholder="••••" maxlength="10"></div>
+      <button class="btn-primary" data-action="acct-signin" style="width:100%;margin-top:4px;">Sign in</button>
+      <div style="display:flex;justify-content:space-between;margin-top:10px;">
+        <a href="#" data-action="auth-mode" data-mode="signup" style="color:var(--muted);font-size:12.5px;text-decoration:underline;">New here? Sign up</a>
+        <a href="#" data-action="auth-mode" data-mode="forgot" style="color:var(--muted);font-size:12.5px;text-decoration:underline;">Forgot PIN?</a>
+      </div>
+    `;
+  }
+
+  function renderAccountBox(){
+    if(state.username){
+      return `
+        <div class="account-box">
+          <div class="account-row">
+            <span>Signed in as <b>@${escapeHtml(state.username)}</b></span>
+            <button class="share-btn-sm" data-action="acct-signout">Sign out</button>
+          </div>
+          ${state.myEvents.length ? `
+            <div class="section-label" style="margin-top:14px;">My Events</div>
+            <div class="home-recent-list">
+              ${state.myEvents.map(e => `
+                <div class="home-recent-item" data-action="open-recent" data-slug="${escapeHtml(e.slug)}">
+                  <span class="home-recent-name">${escapeHtml(e.name)}</span>
+                </div>
+              `).join("")}
+            </div>
+          ` : `<p style="color:var(--muted);font-size:13px;margin:12px 0 0;">Events you create under this account will show up here — sign in with the same username on any device to see them again.</p>`}
+        </div>
+      `;
+    }
+    return `<div class="account-box">${renderAuthForm()}</div>`;
+  }
+
+  function renderHome(){
+    if(!state.username){
+      return `
+        <div class="home-wrap" style="width:100%;text-align:center;padding-top:80px;">
+          <h1 class="brand-mark" style="font-size:38px;margin:0;">EZTaby</h1>
+          <div class="brand-tagline" style="margin:2px 0 30px;">the fuss-free way to keep track of multi-party spending</div>
+          ${state.showAuthOnHome ? `
+            <div class="account-box" style="text-align:left;max-width:380px;margin:0 auto;">${renderAuthForm()}</div>
+          ` : `
+            <button class="btn-primary" data-action="show-auth-on-home" style="padding:14px 32px;">Sign in / Sign up</button>
+            <div class="field" style="margin-top:30px;max-width:380px;margin-left:auto;margin-right:auto;text-align:left;">
+              <label>Have a link or code?</label>
+              <div class="join-row">
+                <input type="text" id="f-join-link" placeholder="Paste the link or event code">
+                <button class="btn-secondary" data-action="join-link">Open</button>
+              </div>
+            </div>
+          `}
+        </div>
+      `;
+    }
+
+    const recents = getRecents();
+    return `
+      <div class="home-wrap" style="width:100%;">
+        <h1 class="brand-mark" style="font-size:34px;margin:0;">EZTaby</h1>
+        <div class="brand-tagline" style="margin:2px 0 26px;">the fuss-free way to keep track of multi-party spending</div>
+        ${renderAccountBox()}
+        ${recents.length ? `
+          <div class="section-label">On this device</div>
+          <div class="home-recent-list">
+            ${recents.map(r => `
+              <div class="home-recent-item" data-action="open-recent" data-slug="${escapeHtml(r.slug)}">
+                <span class="home-recent-name">${escapeHtml(r.name)}</span>
+                <button class="group-tab-delete" data-action="forget-recent" data-id="${r.id}" title="Remove from this device">✕</button>
+              </div>
+            `).join("")}
+          </div>
+        ` : ""}
+        <button class="btn-primary" data-action="open-new-group">+ New Taby Event</button>
+        <div class="field" style="margin-top:26px;">
+          <label>Have a link or code?</label>
+          <div class="join-row">
+            <input type="text" id="f-join-link" placeholder="Paste the link or event code">
+            <button class="btn-secondary" data-action="join-link">Open</button>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  function renderSidebar(){
+    const g = state.gathering;
+    const net = computeNet();
+    const mine = state.myMemberId ? (net[state.myMemberId] || 0) : null;
+    return `
+      <div class="brand">
+        <div class="brand-top">
+          <div class="brand-text">
+            <div class="brand-mark">EZTaby</div>
+            <div class="brand-tagline">a fake guru app</div>
+          </div>
+        </div>
+        ${mine !== null ? `
+          <div class="overall ${mine >= 0 ? "owed":"owes"}">
+            ${mine === 0 ? "You're settled up" : (mine > 0 ? "You're owed" : "You owe")}
+            ${mine !== 0 ? ` <b class="amt">${fmt(Math.abs(mine))}</b>` : ""}
+          </div>
+        ` : `<div class="overall" style="color:var(--muted);">Add yourself to see your balance</div>`}
+      </div>
+      <button class="new-group-btn" data-action="go-home">← Events</button>
+    `;
+  }
+
+  function renderTopbar(){
+    const g = state.gathering;
+    const link = prettyShareUrl(g.slug);
+    return `
+      <div class="topbar">
+        <div class="topbar-row">
+          <div>
+            <h1 class="group-title" data-action="open-rename-gathering" title="Rename gathering">${escapeHtml(g.name)}</h1>
+          </div>
+          <button class="btn-primary" data-action="open-add-expense">+ Add expense</button>
+        </div>
+        <div class="share-bar">
+          <span class="share-link-text">${escapeHtml(link)}</span>
+          <button class="share-btn-sm" data-action="copy-link" data-link="${escapeHtml(link)}">Copy link</button>
+          <button class="share-btn-sm" data-action="native-share" data-link="${escapeHtml(link)}" data-name="${escapeHtml(g.name)}">Share…</button>
+        </div>
+        <div class="member-row">
+          ${state.members.map(m => `
+            <button class="member-chip" data-action="open-rename-member" data-id="${m.id}" title="Rename ${escapeHtml(m.name)}">
+              <span class="avatar" style="background:${colorFor(m.id)}">${initials(m.name)}</span>
+              <span>${escapeHtml(m.name)}${m.id === state.myMemberId ? " (you)" : ""}</span>
+            </button>
+          `).join("")}
+          <button class="add-member-chip" data-action="open-add-member">+ Add person</button>
+        </div>
+        <div class="tabs">
+          <button class="tab-btn ${state.activeTab==='expenses'?'active':''}" data-action="tab" data-tab="expenses">Expenses</button>
+          <button class="tab-btn ${state.activeTab==='balances'?'active':''}" data-action="tab" data-tab="balances">Balances</button>
+        </div>
+      </div>
+    `;
+  }
+
+  function dayLabel(ts){
+    const d = new Date(ts);
+    const today = new Date();
+    const isToday = d.toDateString() === today.toDateString();
+    const yest = new Date(today); yest.setDate(yest.getDate()-1);
+    const isYest = d.toDateString() === yest.toDateString();
+    if(isToday) return "Today";
+    if(isYest) return "Yesterday";
+    return d.toLocaleDateString(undefined,{month:"short",day:"numeric",year: d.getFullYear()!==today.getFullYear() ? "numeric":undefined});
+  }
+
+  function renderExpenses(){
+    const g = state.gathering;
+    if(state.expenses.length === 0){
+      return `
+        <div class="empty-state">
+          <h3>The ledger awaits enlightenment</h3>
+          <p>Add the first cost for ${escapeHtml(g.name)} and EZTaby will reveal who owes who.</p>
+          <button class="btn-primary" data-action="open-add-expense">+ Add expense</button>
+        </div>
+      `;
+    }
+    const sorted = [...state.expenses].sort((a,b)=>b.date-a.date);
+    const memberById = {};
+    state.members.forEach(m => memberById[m.id] = m);
+
+    let html = "";
+    let lastDay = null;
+    sorted.forEach(e => {
+      const label = dayLabel(e.date);
+      if(label !== lastDay){
+        html += `<div class="day-divider">${label}</div>`;
+        lastDay = label;
+      }
+      const payerEntries = e.paidBy || [];
+      const firstPayer = payerEntries[0] ? memberById[payerEntries[0].memberId] : null;
+      const isSettlement = !!e.settlement;
+      const myShare = state.myMemberId ? e.split.find(s => s.memberId === state.myMemberId) : null;
+      const myPayerEntry = state.myMemberId ? payerEntries.find(p => p.memberId === state.myMemberId) : null;
+      let shareText = "";
+      if(state.myMemberId){
+        if(myPayerEntry){
+          const othersTotal = myPayerEntry.amount - (myShare ? myShare.amount : 0);
+          shareText = othersTotal > 0.005 ? `you lent ${fmt(othersTotal)}` : "";
+        } else if(myShare){
+          shareText = `your share ${fmt(myShare.amount)}`;
+        }
+      }
+      const payerNames = payerEntries.map(p => {
+        const m = memberById[p.memberId];
+        return m ? escapeHtml(m.name) : "someone removed";
+      }).join(" & ");
+      const splitNames = e.split.map(s => {
+        const m = memberById[s.memberId];
+        return m ? escapeHtml(m.name) : "someone removed";
+      }).join(", ");
+      const showConverted = e.currency !== g.settlement_currency;
+      html += `
+        <div class="expense-row ${isSettlement?'settlement':''}" ${isSettlement?'':`data-action="edit-expense" data-id="${e.id}"`}>
+          <div class="expense-stamp" style="color:${colorFor(firstPayer ? firstPayer.id : (payerEntries[0] ? payerEntries[0].memberId : "x"))}">${firstPayer ? initials(firstPayer.name) : "?"}</div>
+          <div class="expense-main">
+            <div class="expense-desc">${escapeHtml(e.desc)}</div>
+            <div class="expense-meta">${isSettlement ? "Settlement" : `Paid by ${payerNames || "someone removed"} · split with ${splitNames}`}</div>
+          </div>
+          <div class="expense-amt-col">
+            <div class="expense-amt amt">${fmt(e.amount, e.currency)}</div>
+            ${showConverted ? `<div class="expense-share">≈ ${fmt(e.settlementAmount)}</div>` : ""}
+            ${shareText ? `<div class="expense-share">${shareText}</div>` : ""}
+          </div>
+          <button class="expense-del" data-action="delete-expense" data-id="${e.id}" title="Delete">✕</button>
+        </div>
+      `;
+    });
+    return `<div class="expense-list">${html}</div>`;
+  }
+
+  function renderBalances(){
+    const net = computeNet();
+    const memberById = {};
+    state.members.forEach(m => memberById[m.id] = m);
+    const rows = state.members.map(m => {
+      const amt = net[m.id] || 0;
+      const cls = amt >= 0 ? "pos" : "neg";
+      const sub = amt >= 0.005 ? "gets back" : (amt <= -0.005 ? "owes overall" : "settled up");
+      return `
+        <div class="balance-card">
+          <div class="balance-who">
+            <div class="avatar" style="background:${colorFor(m.id)}">${initials(m.name)}</div>
+            ${escapeHtml(m.name)}
+          </div>
+          <div style="text-align:right;">
+            <div class="balance-amt amt ${cls}">${amt===0?fmt(0):fmt(Math.abs(amt))}</div>
+            <div class="balance-sub">${sub}</div>
+          </div>
+        </div>
+      `;
+    }).join("");
+
+    const txns = simplifyDebts();
+    let txnHtml = "";
+    if(txns.length === 0){
+      txnHtml = `<p style="color:var(--muted);font-size:13.5px;">Everyone's settled up. Financial nirvana achieved. 🧘</p>`;
+    } else {
+      txnHtml = txns.map(t => {
+        const from = memberById[t.from], to = memberById[t.to];
+        return `
+          <div class="settle-row">
+            <div class="settle-text">${escapeHtml(from?from.name:"?")} owes ${escapeHtml(to?to.name:"?")} <span class="amt">${fmt(t.amount)}</span></div>
+            <button class="settle-btn" data-action="settle" data-from="${t.from}" data-to="${t.to}" data-amount="${t.amount}">Settle up</button>
+          </div>
+        `;
+      }).join("");
+    }
+
+    return `
+      <div class="section-label">Balances</div>
+      ${rows}
+      <div class="section-label">Suggested settlements</div>
+      ${txnHtml}
+    `;
+  }
+
+  // ============== MODALS ==============
+  function renderModal(){
+    let overlay = document.querySelector(".modal-backdrop");
+    if(!overlay){
+      overlay = document.createElement("div");
+      overlay.className = "modal-backdrop";
+      document.body.appendChild(overlay);
+    }
+    const m = state.modal;
+    let inner = "";
+    if(m.type === "new-group") inner = modalNewGroup();
+    else if(m.type === "auth-gate") inner = modalAuthGate();
+    else if(m.type === "rename-gathering") inner = modalRenameGathering(m.data || {});
+    else if(m.type === "add-member") inner = modalAddMember();
+    else if(m.type === "rename-member") inner = modalRenameMember(m.data || {});
+    else if(m.type === "add-expense") inner = modalAddExpense(m.data || {});
+    else if(m.type === "claim") inner = modalClaim();
+    overlay.innerHTML = inner;
+    overlay.onclick = (ev) => { if(ev.target === overlay && m.type !== "claim" && m.type !== "auth-gate") closeModal(); };
+    bindModalHandlers(overlay);
+  }
+
+  function closeModal(){
+    state.modal = null;
+    const overlay = document.querySelector(".modal-backdrop");
+    if(overlay) overlay.remove();
+  }
+
+  function modalAuthGate(){
+    return `
+      <div class="modal">
+        <div class="modal-head"><h2>Sign in to create an event</h2></div>
+        <div class="modal-body">
+          <p style="color:var(--muted);font-size:13.5px;margin-top:0;">EZTaby needs an account so your Taby Events stay findable. Takes a few seconds.</p>
+          ${renderAuthForm()}
+        </div>
+      </div>
+    `;
+  }
+
+  function modalClaim(){
+    const step = (state.modal && state.modal.data && state.modal.data.step) || (state.username ? "identity" : "username");
+
+    if(step === "username"){
+      return `
+        <div class="modal">
+          <div class="modal-body" style="text-align:center;padding-top:8px;">
+            <div class="brand-mark" style="font-size:26px;">EZTaby</div>
+            <p style="color:var(--muted);font-size:13.5px;margin:8px 0 22px;">You've been invited to <b style="color:var(--ink);">${escapeHtml(state.gathering.name)}</b>. Sign in or create an account to join in.</p>
+            <div style="text-align:left;">${renderAuthForm()}</div>
+          </div>
+        </div>
+      `;
+    }
+
+    return `
+      <div class="modal">
+        <div class="modal-head"><h2>Which one are you?</h2></div>
+        <div class="modal-body">
+          <p style="color:var(--muted);font-size:13.5px;margin-top:0;">Pick your name so your balance shows up correctly.</p>
+          ${state.members.map(m => `
+            <button class="claim-member-btn" data-action="claim-member" data-id="${m.id}">
+              <span class="avatar" style="background:${colorFor(m.id)}">${initials(m.name)}</span>
+              <span>That's me — ${escapeHtml(m.name)}</span>
+            </button>
+          `).join("")}
+          <div class="field" style="margin-top:14px;">
+            <label>Not listed? Add yourself</label>
+            <input type="text" id="f-claim-new-name" placeholder="Your name">
+          </div>
+        </div>
+        <div class="modal-foot" style="flex-direction:column;align-items:stretch;">
+          <button class="btn-primary" data-action="claim-new" style="width:100%;">Add myself &amp; continue</button>
+        </div>
+      </div>
+    `;
+  }
+
+  function modalNewGroup(){
+    return `
+      <div class="modal">
+        <div class="modal-head"><h2>New Taby Event</h2><button class="modal-close" data-action="close-modal">✕</button></div>
+        <div class="modal-body">
+          <div class="field">
+            <label>Taby Event name</label>
+            <input type="text" id="f-group-name" placeholder="e.g. Roommates, Bali Trip">
+          </div>
+          <div class="field">
+            <label>Your name</label>
+            <input type="text" id="f-your-name" placeholder="Your name">
+          </div>
+          <div class="field">
+            <label>Who else is in this Taby Event?</label>
+            <input type="text" id="f-group-members" placeholder="Alice, Ravi, Priya">
+            <div class="chips-hint">Comma-separated. You can add more later.</div>
+          </div>
+          <div class="field">
+            <label>Settlement currency</label>
+            <select id="f-group-currency">
+              ${CURRENCIES.map(c => `<option value="${c}" ${c==='SGD'?'selected':''}>${c}</option>`).join("")}
+            </select>
+            <div class="chips-hint">Balances are shown in this currency. You can still log expenses in other currencies.</div>
+          </div>
+          <div class="field">
+            <label>Custom link (optional)</label>
+            <input type="text" id="f-group-slug" placeholder="e.g. bali-trip-2026">
+            <div class="chips-hint">Leave blank to auto-generate one from the event name.</div>
+          </div>
+        </div>
+        <div class="modal-foot">
+          <button class="btn-secondary" data-action="close-modal">Cancel</button>
+          <button class="btn-primary" data-action="create-group">Create gathering</button>
+        </div>
+      </div>
+    `;
+  }
+
+  function modalAddMember(){
+    return `
+      <div class="modal">
+        <div class="modal-head"><h2>Add a person</h2><button class="modal-close" data-action="close-modal">✕</button></div>
+        <div class="modal-body">
+          <div class="field">
+            <label>Name</label>
+            <input type="text" id="f-member-name" placeholder="Their name">
+          </div>
+        </div>
+        <div class="modal-foot">
+          <button class="btn-secondary" data-action="close-modal">Cancel</button>
+          <button class="btn-primary" data-action="create-member">Add to event</button>
+        </div>
+      </div>
+    `;
+  }
+
+  function modalRenameGathering(data){
+    return `
+      <div class="modal">
+        <div class="modal-head"><h2>Rename Taby Event</h2><button class="modal-close" data-action="close-modal">✕</button></div>
+        <div class="modal-body">
+          <div class="field">
+            <label>Taby Event name</label>
+            <input type="text" id="f-gathering-rename" placeholder="Gathering name" value="${escapeHtml(data.name||"")}">
+          </div>
+        </div>
+        <div class="modal-foot">
+          <button class="btn-secondary" data-action="close-modal">Cancel</button>
+          <button class="btn-primary" data-action="rename-gathering">Save name</button>
+        </div>
+      </div>
+    `;
+  }
+
+  function modalRenameMember(data){
+    return `
+      <div class="modal">
+        <div class="modal-head"><h2>Rename person</h2><button class="modal-close" data-action="close-modal">✕</button></div>
+        <div class="modal-body">
+          <div class="field">
+            <label>Name</label>
+            <input type="text" id="f-member-rename" placeholder="Name" value="${escapeHtml(data.name||"")}">
+          </div>
+        </div>
+        <div class="modal-foot">
+          <button class="btn-secondary" data-action="close-modal">Cancel</button>
+          <button class="btn-primary" data-action="rename-member" data-id="${data.id}">Save name</button>
+        </div>
+      </div>
+    `;
+  }
+
+  function modalAddExpense(prefill){
+    const g = state.gathering;
+    const splitType = prefill.splitType || "equal";
+    const checked = prefill.participants || state.members.map(m=>m.id);
+    const payerType = prefill.payerType || "equal";
+    const payers = prefill.payers || [state.myMemberId || (state.members[0] && state.members[0].id)].filter(Boolean);
+    const taxEnabled = prefill.taxEnabled || false;
+    const taxService = prefill.taxService !== undefined ? prefill.taxService : state.taxDefaults.service;
+    const taxGst = prefill.taxGst !== undefined ? prefill.taxGst : state.taxDefaults.gst;
+    const currency = prefill.currency || g.settlement_currency;
+    const today = new Date().toISOString().slice(0,10);
+    return `
+      <div class="modal">
+        <div class="modal-head"><h2>${prefill.editId ? "Edit expense" : "Add expense"}</h2><button class="modal-close" data-action="close-modal">✕</button></div>
+        <div class="modal-body">
+          <div class="field">
+            <label>Description</label>
+            <input type="text" id="f-exp-desc" placeholder="Dinner, Uber, Groceries…" value="${escapeHtml(prefill.desc||"")}">
+          </div>
+          <div class="field">
+            <label>Date</label>
+            <input type="date" id="f-exp-date" value="${prefill.expenseDate || today}">
+          </div>
+          <div style="display:flex;gap:10px;">
+            <div class="field" style="flex:1;">
+              <label id="amount-label">${taxEnabled ? "Subtotal (before tax & service)" : "Amount"}</label>
+              <input type="number" id="f-exp-amount" step="0.01" min="0" placeholder="0.00" value="${prefill.amount||""}">
+            </div>
+            <div class="field" style="width:110px;">
+              <label>Currency</label>
+              <select id="f-exp-currency">
+                ${CURRENCIES.map(c => `<option value="${c}" ${c===currency?'selected':''}>${c}</option>`).join("")}
+              </select>
+            </div>
+          </div>
+          <div class="field" id="rate-field" ${currency === g.settlement_currency ? "hidden" : ""}>
+            <label id="rate-label">Exchange rate (1 ${currency} = ? ${g.settlement_currency})</label>
+            <input type="number" id="f-exp-rate" step="0.0001" min="0" placeholder="fetching…" value="${prefill.exchangeRate || ""}">
+            <div class="chips-hint" id="rate-hint">Fetched automatically — edit it if it looks off.</div>
+          </div>
+          <div class="field">
+            <div class="toggle-row">
+              <label>Add tax &amp; service charge</label>
+              <label class="switch">
+                <input type="checkbox" id="f-tax-enabled" ${taxEnabled?"checked":""}>
+                <span class="track"></span><span class="thumb"></span>
+              </label>
+            </div>
+            <div id="tax-rate-fields" ${taxEnabled?"":"hidden"}>
+              <div class="tax-rates-row">
+                <div class="field">
+                  <label>Service charge %</label>
+                  <input type="number" id="f-tax-service" step="0.1" min="0" value="${taxService}">
+                </div>
+                <div class="field">
+                  <label>GST %</label>
+                  <input type="number" id="f-tax-gst" step="0.1" min="0" value="${taxGst}">
+                </div>
+              </div>
+              <div class="tax-breakdown" id="tax-breakdown"></div>
+            </div>
+          </div>
+          <div class="field">
+            <label>Paid by</label>
+            <div class="split-toggle">
+              <button type="button" data-action="payer-type" data-type="equal" class="${payerType==='equal'?'active':''}">Equally</button>
+              <button type="button" data-action="payer-type" data-type="custom" class="${payerType==='custom'?'active':''}">By amount</button>
+              <button type="button" data-action="payer-type" data-type="percent" class="${payerType==='percent'?'active':''}">By %</button>
+            </div>
+            <div id="payer-list">
+              ${state.members.map(m => {
+                const isChecked = payers.includes(m.id);
+                const custom = (prefill.payerAmounts && prefill.payerAmounts[m.id] !== undefined) ? prefill.payerAmounts[m.id] : "";
+                const pct = (prefill.payerPercents && prefill.payerPercents[m.id] !== undefined) ? prefill.payerPercents[m.id] : "";
+                let extra = "";
+                if(payerType==='custom') extra = `<input type="number" step="0.01" class="payer-amount" data-id="${m.id}" value="${custom}" placeholder="0.00">`;
+                else if(payerType==='percent') extra = `<input type="number" step="0.1" class="payer-percent" data-id="${m.id}" value="${pct}" placeholder="0" style="width:64px;">%`;
+                return `
+                <div class="participant-row">
+                  <label>
+                    <input type="checkbox" class="payer-check" value="${m.id}" ${isChecked?"checked":""}>
+                    ${escapeHtml(m.name)}
+                  </label>
+                  ${extra}
+                </div>
+              `;}).join("")}
+            </div>
+            <div class="split-total-row" id="payer-total-row"></div>
+          </div>
+          <div class="field">
+            <label>Split</label>
+            <div class="split-toggle">
+              <button type="button" data-action="split-type" data-type="equal" class="${splitType==='equal'?'active':''}">Equally</button>
+              <button type="button" data-action="split-type" data-type="custom" class="${splitType==='custom'?'active':''}">By amount</button>
+              <button type="button" data-action="split-type" data-type="percent" class="${splitType==='percent'?'active':''}">By %</button>
+            </div>
+            <div id="participant-list">
+              ${state.members.map(m => {
+                const isChecked = checked.includes(m.id);
+                const custom = (prefill.customAmounts && prefill.customAmounts[m.id] !== undefined) ? prefill.customAmounts[m.id] : "";
+                const pct = (prefill.percentAmounts && prefill.percentAmounts[m.id] !== undefined) ? prefill.percentAmounts[m.id] : "";
+                let extra = "";
+                if(splitType==='custom') extra = `<input type="number" step="0.01" class="participant-amount" data-id="${m.id}" value="${custom}" placeholder="0.00">`;
+                else if(splitType==='percent') extra = `<input type="number" step="0.1" class="participant-percent" data-id="${m.id}" value="${pct}" placeholder="0" style="width:64px;">%`;
+                return `
+                <div class="participant-row">
+                  <label>
+                    <input type="checkbox" class="participant-check" value="${m.id}" ${isChecked?"checked":""}>
+                    ${escapeHtml(m.name)}
+                  </label>
+                  ${extra}
+                </div>
+              `;}).join("")}
+            </div>
+            <div class="split-total-row" id="split-total-row"></div>
+          </div>
+        </div>
+        <div class="modal-foot">
+          <button class="btn-secondary" data-action="close-modal">Cancel</button>
+          <button class="btn-primary" data-action="create-expense">${prefill.editId ? "Save changes" : "Save expense"}</button>
+        </div>
+      </div>
+    `;
+  }
+
+  function readTaxInputs(){
+    const amountInput = document.getElementById("f-exp-amount");
+    const taxToggle = document.getElementById("f-tax-enabled");
+    const serviceInput = document.getElementById("f-tax-service");
+    const gstInput = document.getElementById("f-tax-gst");
+    const subtotal = amountInput ? (parseFloat(amountInput.value) || 0) : 0;
+    const enabled = taxToggle ? taxToggle.checked : false;
+    const servicePct = serviceInput ? (parseFloat(serviceInput.value) || 0) : 0;
+    const gstPct = gstInput ? (parseFloat(gstInput.value) || 0) : 0;
+    return computeTotal(subtotal, enabled, servicePct, gstPct);
+  }
+
+  function updateTaxBreakdown(calc){
+    const box = document.getElementById("tax-breakdown");
+    if(!box) return;
+    const cur = (document.getElementById("f-exp-currency")||{}).value || (state.gathering && state.gathering.settlement_currency);
+    if(calc.service === 0 && calc.gst === 0){
+      box.innerHTML = `<div class="tb-row tb-total"><span>Total</span><span>${fmt(calc.total, cur)}</span></div>`;
+      return;
+    }
+    const serviceInput = document.getElementById("f-tax-service");
+    const gstInput = document.getElementById("f-tax-gst");
+    const servicePct = serviceInput ? serviceInput.value : "";
+    const gstPct = gstInput ? gstInput.value : "";
+    box.innerHTML = `
+      <div class="tb-row"><span>Subtotal</span><span>${fmt(calc.subtotal, cur)}</span></div>
+      <div class="tb-row"><span>Service charge (${servicePct}%)</span><span>${fmt(calc.service, cur)}</span></div>
+      <div class="tb-row"><span>GST (${gstPct}%)</span><span>${fmt(calc.gst, cur)}</span></div>
+      <div class="tb-row tb-total"><span>Total</span><span>${fmt(calc.total, cur)}</span></div>
+    `;
+  }
+
+  function updateSplitTotalIndicator(){
+    const row = document.getElementById("split-total-row");
+    if(row){
+      const calc = readTaxInputs();
+      updateTaxBreakdown(calc);
+      const total = calc.total;
+      const cur = (document.getElementById("f-exp-currency")||{}).value || (state.gathering && state.gathering.settlement_currency);
+      const customInputs = document.querySelectorAll(".participant-amount");
+      const percentInputs = document.querySelectorAll(".participant-percent");
+      if(percentInputs.length > 0){
+        let pctSum = 0;
+        percentInputs.forEach(inp => { pctSum += parseFloat(inp.value) || 0; });
+        pctSum = Math.round(pctSum*10)/10;
+        if(Math.abs(pctSum - 100) < 0.1){
+          row.className = "split-total-row";
+          row.textContent = `Assigned ${pctSum}% of 100% ✓`;
+        } else {
+          row.className = "split-total-row err";
+          row.textContent = `Assigned ${pctSum}% of 100% — ${pctSum<100 ? (100-pctSum).toFixed(1)+"% left" : (pctSum-100).toFixed(1)+"% over"}`;
+        }
+      } else if(customInputs.length > 0){
+        let sum = 0;
+        customInputs.forEach(inp => { sum += parseFloat(inp.value) || 0; });
+        sum = Math.round(sum*100)/100;
+        const diff = Math.round((total - sum)*100)/100;
+        if(Math.abs(diff) < 0.01){
+          row.className = "split-total-row";
+          row.textContent = `Assigned ${fmt(sum,cur)} of ${fmt(total,cur)} ✓`;
+        } else {
+          row.className = "split-total-row err";
+          row.textContent = `Assigned ${fmt(sum,cur)} of ${fmt(total,cur)} — ${diff>0?fmt(diff,cur)+" left":fmt(-diff,cur)+" over"}`;
+        }
+      } else {
+        row.textContent = "";
+      }
+    }
+    updatePayerTotalIndicator();
+  }
+
+  function updatePayerTotalIndicator(){
+    const row = document.getElementById("payer-total-row");
+    if(!row) return;
+    const cur = (document.getElementById("f-exp-currency")||{}).value || (state.gathering && state.gathering.settlement_currency);
+    const payerPercentInputs = document.querySelectorAll(".payer-percent");
+    const payerAmountInputs = document.querySelectorAll(".payer-amount");
+    if(payerPercentInputs.length > 0){
+      let pctSum = 0;
+      payerPercentInputs.forEach(inp => { pctSum += parseFloat(inp.value) || 0; });
+      pctSum = Math.round(pctSum*10)/10;
+      if(Math.abs(pctSum - 100) < 0.1){
+        row.className = "split-total-row";
+        row.textContent = `Assigned ${pctSum}% of 100% ✓`;
+      } else {
+        row.className = "split-total-row err";
+        row.textContent = `Assigned ${pctSum}% of 100% — ${pctSum<100 ? (100-pctSum).toFixed(1)+"% left" : (pctSum-100).toFixed(1)+"% over"}`;
+      }
+      return;
+    }
+    if(payerAmountInputs.length === 0){ row.textContent = ""; return; }
+    const calc = readTaxInputs();
+    const total = calc.total;
+    let sum = 0;
+    payerAmountInputs.forEach(inp => { sum += parseFloat(inp.value) || 0; });
+    sum = Math.round(sum*100)/100;
+    const diff = Math.round((total - sum)*100)/100;
+    if(Math.abs(diff) < 0.01){
+      row.className = "split-total-row";
+      row.textContent = `Assigned ${fmt(sum,cur)} of ${fmt(total,cur)} ✓`;
+    } else {
+      row.className = "split-total-row err";
+      row.textContent = `Assigned ${fmt(sum,cur)} of ${fmt(total,cur)} — ${diff>0?fmt(diff,cur)+" left":fmt(-diff,cur)+" over"}`;
+    }
+  }
+
+  function onTaxToggleChange(ev){
+    const fields = document.getElementById("tax-rate-fields");
+    if(fields) fields.hidden = !ev.target.checked;
+    const label = document.getElementById("amount-label");
+    if(label) label.textContent = ev.target.checked ? "Subtotal (before tax & service)" : "Amount";
+    updateSplitTotalIndicator();
+  }
+
+  async function onCurrencyChange(){
+    const overlay = document.querySelector(".modal-backdrop");
+    const rateField = overlay.querySelector("#rate-field");
+    const currencySelect = overlay.querySelector("#f-exp-currency");
+    const settlementCur = state.gathering.settlement_currency;
+    if(currencySelect.value === settlementCur){
+      if(rateField) rateField.hidden = true;
+    } else {
+      if(rateField) rateField.hidden = false;
+      await maybeFetchRate(overlay, true);
+    }
+    updateSplitTotalIndicator();
+  }
+
+  async function maybeFetchRate(overlay, force){
+    const currencySelect = overlay.querySelector("#f-exp-currency");
+    const rateInput = overlay.querySelector("#f-exp-rate");
+    const rateLabel = overlay.querySelector("#rate-label");
+    const rateHint = overlay.querySelector("#rate-hint");
+    if(!currencySelect || !rateInput) return;
+    const cur = currencySelect.value;
+    const settlementCur = state.gathering.settlement_currency;
+    if(rateLabel) rateLabel.textContent = `Exchange rate (1 ${cur} = ? ${settlementCur})`;
+    if(cur === settlementCur) return;
+    if(!force && rateInput.value) return; // already has a value (editing or preserved draft)
+    rateInput.value = "";
+    rateInput.placeholder = "fetching…";
+    if(rateHint) rateHint.textContent = "Fetching the current rate…";
+    const rate = await getExchangeRate(cur, settlementCur);
+    // If the modal was closed or currency changed again while we were waiting, don't clobber it.
+    if(!document.body.contains(rateInput)) return;
+    if(document.getElementById("f-exp-currency").value !== cur) return;
+    if(rate === null){
+      rateInput.placeholder = "couldn't fetch — enter manually";
+      if(rateHint) rateHint.textContent = "We couldn't reach the exchange-rate service. Please type the rate in yourself.";
+    } else {
+      rateInput.value = rate;
+      if(rateHint) rateHint.textContent = "Fetched automatically — edit it if it looks off.";
+    }
+    updateSplitTotalIndicator();
+  }
+
+  // ============== EVENT BINDING ==============
+  function bindModalHandlers(overlay){
+    overlay.querySelectorAll("[data-action]").forEach(el => {
+      el.addEventListener("click", onAction);
+    });
+    const amountInput = overlay.querySelector("#f-exp-amount");
+    if(amountInput){
+      amountInput.addEventListener("input", updateSplitTotalIndicator);
+      updateSplitTotalIndicator();
+    }
+    const currencySelect = overlay.querySelector("#f-exp-currency");
+    if(currencySelect) currencySelect.addEventListener("change", onCurrencyChange);
+    maybeFetchRate(overlay, false);
+    const taxToggle = overlay.querySelector("#f-tax-enabled");
+    if(taxToggle) taxToggle.addEventListener("change", onTaxToggleChange);
+    const serviceInput = overlay.querySelector("#f-tax-service");
+    if(serviceInput) serviceInput.addEventListener("input", updateSplitTotalIndicator);
+    const gstInput = overlay.querySelector("#f-tax-gst");
+    if(gstInput) gstInput.addEventListener("input", updateSplitTotalIndicator);
+    overlay.querySelectorAll(".participant-amount, .participant-percent").forEach(inp => {
+      inp.addEventListener("input", updateSplitTotalIndicator);
+    });
+    overlay.querySelectorAll(".participant-check").forEach(cb => {
+      cb.addEventListener("change", updateSplitTotalIndicator);
+    });
+    overlay.querySelectorAll(".payer-amount, .payer-percent").forEach(inp => {
+      inp.addEventListener("input", updatePayerTotalIndicator);
+    });
+    overlay.querySelectorAll(".payer-check").forEach(cb => {
+      cb.addEventListener("change", updatePayerTotalIndicator);
+    });
+    const nameInput = overlay.querySelector("#f-group-name, #f-member-name, #f-member-rename, #f-gathering-rename, #f-exp-desc, #f-claim-new-name");
+    if(nameInput) setTimeout(()=>nameInput.focus(), 30);
+  }
+
+  function bindGlobalHandlers(){
+    app.querySelectorAll("[data-action]").forEach(el => {
+      el.addEventListener("click", onAction);
+    });
+  }
+
+  function currentExpenseDraftFromForm(){
+    const overlay = document.querySelector(".modal-backdrop");
+    const splitTypeBtn = overlay.querySelector('[data-action="split-type"].active');
+    const splitType = splitTypeBtn ? splitTypeBtn.dataset.type : "equal";
+    const participants = Array.from(overlay.querySelectorAll(".participant-check:checked")).map(cb=>cb.value);
+    const customAmounts = {};
+    overlay.querySelectorAll(".participant-amount").forEach(inp => {
+      customAmounts[inp.dataset.id] = inp.value;
+    });
+    const percentAmounts = {};
+    overlay.querySelectorAll(".participant-percent").forEach(inp => {
+      percentAmounts[inp.dataset.id] = inp.value;
+    });
+    const payerTypeBtn = overlay.querySelector('[data-action="payer-type"].active');
+    const payerType = payerTypeBtn ? payerTypeBtn.dataset.type : "equal";
+    const payers = Array.from(overlay.querySelectorAll(".payer-check:checked")).map(cb=>cb.value);
+    const payerAmounts = {};
+    overlay.querySelectorAll(".payer-amount").forEach(inp => {
+      payerAmounts[inp.dataset.id] = inp.value;
+    });
+    const payerPercents = {};
+    overlay.querySelectorAll(".payer-percent").forEach(inp => {
+      payerPercents[inp.dataset.id] = inp.value;
+    });
+    const taxToggle = overlay.querySelector("#f-tax-enabled");
+    const serviceInput = overlay.querySelector("#f-tax-service");
+    const gstInput = overlay.querySelector("#f-tax-gst");
+    return {
+      desc: overlay.querySelector("#f-exp-desc").value,
+      amount: overlay.querySelector("#f-exp-amount").value,
+      currency: overlay.querySelector("#f-exp-currency").value,
+      exchangeRate: (overlay.querySelector("#f-exp-rate")||{}).value,
+      expenseDate: overlay.querySelector("#f-exp-date").value,
+      splitType, participants, customAmounts, percentAmounts,
+      payerType, payers, payerAmounts, payerPercents,
+      taxEnabled: taxToggle ? taxToggle.checked : false,
+      taxService: serviceInput ? serviceInput.value : state.taxDefaults.service,
+      taxGst: gstInput ? gstInput.value : state.taxDefaults.gst,
+      editId: (state.modal && state.modal.data && state.modal.data.editId) || undefined
+    };
+  }
+
+  async function onAction(ev){
+    const el = ev.currentTarget;
+    const action = el.dataset.action;
+
+    if(action === "show-auth-on-home"){
+      state.showAuthOnHome = true;
+      render();
+    }
+    else if(action === "open-new-group"){
+      if(!state.username){
+        state.authUI = {mode:"signin", error:null, question:null, forgotUsername:null, onSuccessAction:"open-new-group"};
+        state.modal = {type:"auth-gate"};
+      } else {
+        state.modal = {type:"new-group"};
+      }
+      renderModal();
+    }
+    else if(action === "go-home"){
+      goHome();
+    }
+    else if(action === "close-modal"){
+      closeModal();
+    }
+    else if(action === "open-recent"){
+      goToSlug(el.dataset.slug);
+    }
+    else if(action === "forget-recent"){
+      ev.stopPropagation();
+      removeRecent(el.dataset.id);
+      render();
+    }
+    else if(action === "join-link"){
+      const input = document.getElementById("f-join-link");
+      const val = (input.value || "").trim();
+      if(!val) return;
+      let slug = val;
+      try{
+        if(val.includes("?g=")) slug = new URL(val).searchParams.get("g");
+        else if(val.includes("/")) slug = val.split("/").pop();
+      }catch(e){}
+      goToSlug(slug.replace(/^\?g=/, ""));
+    }
+    else if(action === "copy-link"){
+      try{
+        await navigator.clipboard.writeText(el.dataset.link);
+        el.textContent = "Copied!";
+        setTimeout(()=>{ el.textContent = "Copy link"; }, 1500);
+      }catch(e){ alert("Couldn't copy — long-press the link text to copy manually."); }
+    }
+    else if(action === "native-share"){
+      const link = el.dataset.link, name = el.dataset.name;
+      if(navigator.share){
+        try{ await navigator.share({title: name, text: `Join our Taby Event "${name}" on EZTaby`, url: link}); }catch(e){}
+      } else {
+        try{ await navigator.clipboard.writeText(link); alert("Link copied — paste it into WhatsApp, email, or a text message."); }catch(e){ alert(link); }
+      }
+    }
+    else if(action === "auth-mode"){
+      ev.preventDefault();
+      state.authUI.mode = el.dataset.mode;
+      state.authUI.error = null;
+      state.authUI.question = null;
+      refreshAuthUI();
+    }
+    else if(action === "acct-signin"){
+      const username = (authEl("auth-username").value || "").trim();
+      const pin = (authEl("auth-pin").value || "").trim();
+      if(!username || !pin){ state.authUI.error = "Please fill in both fields."; refreshAuthUI(); return; }
+      el.textContent = "Signing in…"; el.disabled = true;
+      const res = await acctLogIn(username, pin);
+      if(res.success){
+        await onAuthSuccess(res.username);
+      } else {
+        state.authUI.error = acctErrorText(res.error);
+        refreshAuthUI();
+      }
+    }
+    else if(action === "acct-signup"){
+      const username = (authEl("auth-username").value || "").trim();
+      const pin = (authEl("auth-pin").value || "").trim();
+      const pinConfirm = (authEl("auth-pin-confirm").value || "").trim();
+      const question = (authEl("auth-question").value || "").trim();
+      const answer = (authEl("auth-answer").value || "").trim();
+      if(!username || !pin || !question || !answer){ state.authUI.error = "Please fill in every field."; refreshAuthUI(); return; }
+      if(pin.length < 4){ state.authUI.error = "PIN must be at least 4 digits."; refreshAuthUI(); return; }
+      if(pin !== pinConfirm){ state.authUI.error = "PINs don't match."; refreshAuthUI(); return; }
+      el.textContent = "Creating…"; el.disabled = true;
+      const res = await acctSignUp(username, pin, question, answer);
+      if(res.success){
+        await onAuthSuccess(res.username);
+      } else {
+        state.authUI.error = acctErrorText(res.error);
+        refreshAuthUI();
+      }
+    }
+    else if(action === "auth-forgot-lookup"){
+      const username = (authEl("auth-forgot-username").value || "").trim();
+      if(!username){ state.authUI.error = "Enter your username first."; refreshAuthUI(); return; }
+      el.textContent = "Checking…"; el.disabled = true;
+      const res = await acctGetQuestion(username);
+      if(res.success){
+        state.authUI.question = res.question;
+        state.authUI.forgotUsername = username;
+        state.authUI.error = null;
+      } else {
+        state.authUI.error = acctErrorText(res.error);
+      }
+      refreshAuthUI();
+    }
+    else if(action === "acct-reset-pin"){
+      const answer = (authEl("auth-answer").value || "").trim();
+      const newPin = (authEl("auth-new-pin").value || "").trim();
+      const newPinConfirm = (authEl("auth-new-pin-confirm").value || "").trim();
+      if(!answer || !newPin){ state.authUI.error = "Please fill in every field."; refreshAuthUI(); return; }
+      if(newPin.length < 4){ state.authUI.error = "PIN must be at least 4 digits."; refreshAuthUI(); return; }
+      if(newPin !== newPinConfirm){ state.authUI.error = "PINs don't match."; refreshAuthUI(); return; }
+      el.textContent = "Resetting…"; el.disabled = true;
+      const res = await acctResetPin(state.authUI.forgotUsername, answer, newPin);
+      if(res.success){
+        state.authUI = {mode:"signin", error:"PIN reset — please sign in with your new PIN.", question:null, forgotUsername:null, onSuccessAction: state.authUI.onSuccessAction};
+      } else {
+        state.authUI.error = acctErrorText(res.error);
+      }
+      refreshAuthUI();
+    }
+    else if(action === "acct-signout"){
+      clearSessionUsername();
+      state.username = null;
+      state.myEvents = [];
+      state.showAuthOnHome = false;
+      render();
+    }
+    else if(action === "claim-member"){
+      setIdentity(state.gathering.id, el.dataset.id);
+      state.myMemberId = el.dataset.id;
+      if(state.username){
+        await sb.from("members").update({claimed_username: state.username}).eq("id", el.dataset.id);
+      }
+      closeModal();
+      await refreshData();
+    }
+    else if(action === "claim-new"){
+      const nameEl = document.getElementById("f-claim-new-name");
+      const name = nameEl.value.trim();
+      if(!name){ nameEl.focus(); return; }
+      const insertRow = {gathering_id: state.gathering.id, name};
+      if(state.username) insertRow.claimed_username = state.username;
+      const {data} = await sb.from("members").insert(insertRow).select().single();
+      if(data){
+        setIdentity(state.gathering.id, data.id);
+        state.myMemberId = data.id;
+      }
+      closeModal();
+      await refreshData();
+    }
+    else if(action === "tab"){
+      state.activeTab = el.dataset.tab;
+      render();
+    }
+    else if(action === "open-rename-gathering"){
+      state.modal = {type:"rename-gathering", data:{name: state.gathering.name}};
+      renderModal();
+    }
+    else if(action === "rename-gathering"){
+      const nameEl = document.getElementById("f-gathering-rename");
+      const name = nameEl.value.trim();
+      if(!name){ nameEl.focus(); return; }
+      await sb.from("gatherings").update({name}).eq("id", state.gathering.id);
+      state.gathering.name = name;
+      addRecent({id: state.gathering.id, slug: state.gathering.slug, name: name});
+      closeModal();
+      render();
+    }
+    else if(action === "open-add-member"){
+      state.modal = {type:"add-member"};
+      renderModal();
+    }
+    else if(action === "open-rename-member"){
+      const member = state.members.find(m => m.id === el.dataset.id);
+      if(!member) return;
+      state.modal = {type:"rename-member", data:{id: member.id, name: member.name}};
+      renderModal();
+    }
+    else if(action === "rename-member"){
+      const nameEl = document.getElementById("f-member-rename");
+      const name = nameEl.value.trim();
+      if(!name){ nameEl.focus(); return; }
+      await sb.from("members").update({name}).eq("id", el.dataset.id);
+      closeModal();
+      await refreshData();
+    }
+    else if(action === "open-add-expense"){
+      state.modal = {type:"add-expense", data:{}};
+      renderModal();
+    }
+    else if(action === "edit-expense"){
+      const exp = state.expenses.find(x => x.id === el.dataset.id);
+      if(!exp || exp.settlement) return;
+      const participants = exp.split.map(s => s.memberId);
+      const customAmounts = {};
+      exp.split.forEach(s => { customAmounts[s.memberId] = s.amount.toFixed(2); });
+      const amounts = exp.split.map(s => s.amount);
+      const inferredEqual = amounts.length > 0 && (Math.max(...amounts) - Math.min(...amounts)) < 0.02;
+      const payers = exp.paidBy.map(p => p.memberId);
+      const payerAmounts = {};
+      exp.paidBy.forEach(p => { payerAmounts[p.memberId] = p.amount.toFixed(2); });
+      const payerAmts = exp.paidBy.map(p => p.amount);
+      const payerInferredEqual = payerAmts.length > 0 && (Math.max(...payerAmts) - Math.min(...payerAmts)) < 0.02;
+      state.modal = {type:"add-expense", data:{
+        editId: exp.id,
+        desc: exp.desc,
+        amount: exp.taxApplied ? exp.subtotal : exp.amount,
+        currency: exp.currency,
+        exchangeRate: exp.exchangeRate,
+        expenseDate: exp.expenseDate,
+        splitType: exp.splitType || (inferredEqual ? "equal" : "custom"),
+        participants, customAmounts,
+        payerType: payerInferredEqual ? "equal" : "custom",
+        payers, payerAmounts,
+        taxEnabled: !!exp.taxApplied,
+        taxService: exp.taxApplied ? exp.taxService : state.taxDefaults.service,
+        taxGst: exp.taxApplied ? exp.taxGst : state.taxDefaults.gst
+      }};
+      renderModal();
+    }
+    else if(action === "split-type"){
+      const draft = currentExpenseDraftFromForm();
+      draft.splitType = el.dataset.type;
+      state.modal = {type:"add-expense", data: draft};
+      renderModal();
+    }
+    else if(action === "payer-type"){
+      const draft = currentExpenseDraftFromForm();
+      draft.payerType = el.dataset.type;
+      state.modal = {type:"add-expense", data: draft};
+      renderModal();
+    }
+    else if(action === "create-group"){
+      await handleCreateGroup();
+    }
+    else if(action === "create-member"){
+      const nameEl = document.getElementById("f-member-name");
+      const name = nameEl.value.trim();
+      if(!name){ nameEl.focus(); return; }
+      await sb.from("members").insert({gathering_id: state.gathering.id, name});
+      closeModal();
+      await refreshData();
+    }
+    else if(action === "create-expense"){
+      await handleCreateExpense();
+    }
+    else if(action === "delete-expense"){
+      ev.stopPropagation();
+      await sb.from("expenses").delete().eq("id", el.dataset.id);
+      await refreshData();
+    }
+    else if(action === "settle"){
+      const from = el.dataset.from, to = el.dataset.to, amount = parseFloat(el.dataset.amount);
+      const memberById = {}; state.members.forEach(m=>memberById[m.id]=m);
+      await sb.from("expenses").insert({
+        gathering_id: state.gathering.id,
+        description: `${memberById[from]?memberById[from].name:"?"} paid ${memberById[to]?memberById[to].name:"?"}`,
+        amount, currency: state.gathering.settlement_currency, exchange_rate: 1,
+        paid_by: [{memberId: from, amount}], split: [{memberId: to, amount}], split_type: "equal",
+        expense_date: new Date().toISOString().slice(0,10), is_settlement: true
+      });
+      await refreshData();
+    }
+  }
+
+  async function handleCreateGroup(){
+    const nameEl = document.getElementById("f-group-name");
+    const yourNameEl = document.getElementById("f-your-name");
+    const membersEl = document.getElementById("f-group-members");
+    const currencyEl = document.getElementById("f-group-currency");
+    const slugEl = document.getElementById("f-group-slug");
+    const name = nameEl.value.trim();
+    if(!name){ nameEl.focus(); return; }
+    const yourName = yourNameEl.value.trim();
+    const friendNames = membersEl.value.split(",").map(s=>s.trim()).filter(Boolean);
+    if(!yourName && friendNames.length === 0){ yourNameEl.focus(); return; }
+
+    const createBtn = document.querySelector('[data-action="create-group"]');
+    if(createBtn){ createBtn.textContent = "Creating…"; createBtn.disabled = true; }
+
+    const slug = await generateUniqueSlug(slugEl.value.trim() || name);
+    const insertRow = {slug, name, settlement_currency: currencyEl.value};
+    if(state.username) insertRow.owner_username = state.username;
+    const {data: gathering, error} = await sb.from("gatherings").insert(insertRow).select().single();
+    if(error || !gathering){ alert("Something went wrong creating the Taby Event. Please try again."); return; }
+
+    const rows = [];
+    if(yourName) rows.push({gathering_id: gathering.id, name: yourName});
+    friendNames.forEach(n => rows.push({gathering_id: gathering.id, name: n}));
+    let insertedMembers = [];
+    if(rows.length){
+      const {data: mrows} = await sb.from("members").insert(rows).select();
+      insertedMembers = mrows || [];
+    }
+    addRecent({id: gathering.id, slug: gathering.slug, name: gathering.name});
+    if(yourName){
+      const me = insertedMembers.find(m => m.name === yourName);
+      if(me) setIdentity(gathering.id, me.id);
+    }
+    goToSlug(gathering.slug);
+  }
+
+  async function handleCreateExpense(){
+    const desc = document.getElementById("f-exp-desc").value.trim();
+    const subtotal = parseFloat(document.getElementById("f-exp-amount").value);
+    const currency = document.getElementById("f-exp-currency").value;
+    const expenseDate = document.getElementById("f-exp-date").value;
+    if(!desc || !(subtotal > 0)){ return; }
+    const overlay = document.querySelector(".modal-backdrop");
+    const editId = state.modal && state.modal.data ? state.modal.data.editId : undefined;
+
+    const taxToggle = overlay.querySelector("#f-tax-enabled");
+    const taxEnabled = taxToggle ? taxToggle.checked : false;
+    const servicePct = parseFloat((overlay.querySelector("#f-tax-service")||{}).value) || 0;
+    const gstPct = parseFloat((overlay.querySelector("#f-tax-gst")||{}).value) || 0;
+    const calc = computeTotal(subtotal, taxEnabled, servicePct, gstPct);
+    const amount = calc.total;
+
+    if(taxEnabled) setTaxDefaults({service: servicePct, gst: gstPct});
+
+    const splitTypeBtn = overlay.querySelector('[data-action="split-type"].active');
+    const splitType = splitTypeBtn ? splitTypeBtn.dataset.type : "equal";
+    const participants = Array.from(overlay.querySelectorAll(".participant-check:checked")).map(cb=>cb.value);
+    if(participants.length === 0){ alert("Select at least one person to split with."); return; }
+
+    const payerTypeBtn = overlay.querySelector('[data-action="payer-type"].active');
+    const payerType = payerTypeBtn ? payerTypeBtn.dataset.type : "equal";
+    const payerIds = Array.from(overlay.querySelectorAll(".payer-check:checked")).map(cb=>cb.value);
+    if(payerIds.length === 0){ alert("Select at least one person who paid."); return; }
+
+    const saveBtn = document.querySelector('[data-action="create-expense"]');
+    if(saveBtn){ saveBtn.textContent = "Saving…"; saveBtn.disabled = true; }
+
+    const rateInput = document.getElementById("f-exp-rate");
+    const rate = (currency === state.gathering.settlement_currency) ? 1 : (parseFloat(rateInput && rateInput.value) || 1);
+    const settlementTotal = Math.round(amount * rate * 100)/100;
+
+    function resetSaveBtn(){
+      if(saveBtn){ saveBtn.textContent = editId ? "Save changes" : "Save expense"; saveBtn.disabled = false; }
+    }
+
+    // ---- Build payer array ----
+    let paidByArr = [];
+    if(payerType === "equal"){
+      const share = Math.floor((settlementTotal / payerIds.length) * 100) / 100;
+      let remainder = Math.round((settlementTotal - share*payerIds.length) * 100);
+      paidByArr = payerIds.map(id => {
+        let amt = share;
+        if(remainder > 0){ amt = Math.round((amt + 0.01)*100)/100; remainder--; }
+        return {memberId:id, amount: amt};
+      });
+    } else if(payerType === "percent"){
+      let pctSum = 0;
+      payerIds.forEach(id => {
+        const inp = overlay.querySelector(`.payer-percent[data-id="${id}"]`);
+        pctSum += parseFloat(inp.value) || 0;
+      });
+      if(Math.abs(pctSum - 100) > 0.15){
+        alert("The paid-by percentages don't add up to 100%.");
+        resetSaveBtn();
+        return;
+      }
+      let sum = 0;
+      paidByArr = payerIds.map((id, idx) => {
+        const inp = overlay.querySelector(`.payer-percent[data-id="${id}"]`);
+        const pct = parseFloat(inp.value) || 0;
+        let amt;
+        if(idx === payerIds.length - 1){
+          amt = Math.round((settlementTotal - sum) * 100)/100;
+        } else {
+          amt = Math.round(settlementTotal * (pct/100) * 100)/100;
+        }
+        sum += amt;
+        return {memberId:id, amount: amt};
+      });
+    } else {
+      let rawSum = 0;
+      payerIds.forEach(id => {
+        const inp = overlay.querySelector(`.payer-amount[data-id="${id}"]`);
+        rawSum += Math.round((parseFloat(inp.value) || 0)*100)/100;
+      });
+      if(Math.abs(rawSum - amount) > 0.01){
+        alert("The amounts paid don't add up to the total.");
+        resetSaveBtn();
+        return;
+      }
+      paidByArr = payerIds.map(id => {
+        const inp = overlay.querySelector(`.payer-amount[data-id="${id}"]`);
+        const v = Math.round((parseFloat(inp.value) || 0)*100)/100;
+        return {memberId:id, amount: Math.round(v * rate * 100)/100};
+      });
+    }
+
+    // ---- Build split array ----
+    let split = [];
+    if(splitType === "equal"){
+      const share = Math.floor((settlementTotal / participants.length) * 100) / 100;
+      let remainder = Math.round((settlementTotal - share*participants.length) * 100);
+      split = participants.map((id) => {
+        let amt = share;
+        if(remainder > 0){ amt = Math.round((amt + 0.01)*100)/100; remainder--; }
+        return {memberId:id, amount: amt};
+      });
+    } else if(splitType === "percent"){
+      let pctSum = 0;
+      participants.forEach(id => {
+        const inp = overlay.querySelector(`.participant-percent[data-id="${id}"]`);
+        pctSum += parseFloat(inp.value) || 0;
+      });
+      if(Math.abs(pctSum - 100) > 0.15){
+        alert("The percentages don't add up to 100%.");
+        resetSaveBtn();
+        return;
+      }
+      let sum = 0;
+      split = participants.map((id, idx) => {
+        const inp = overlay.querySelector(`.participant-percent[data-id="${id}"]`);
+        const pct = parseFloat(inp.value) || 0;
+        let amt;
+        if(idx === participants.length - 1){
+          amt = Math.round((settlementTotal - sum) * 100)/100;
+        } else {
+          amt = Math.round(settlementTotal * (pct/100) * 100)/100;
+        }
+        sum += amt;
+        return {memberId:id, amount: amt};
+      });
+    } else {
+      let rawSum = 0;
+      participants.forEach(id => {
+        const inp = overlay.querySelector(`.participant-amount[data-id="${id}"]`);
+        rawSum += Math.round((parseFloat(inp.value) || 0)*100)/100;
+      });
+      if(Math.abs(rawSum - amount) > 0.01){
+        alert("The split amounts don't add up to the total.");
+        resetSaveBtn();
+        return;
+      }
+      split = participants.map(id => {
+        const inp = overlay.querySelector(`.participant-amount[data-id="${id}"]`);
+        const v = Math.round((parseFloat(inp.value) || 0)*100)/100;
+        return {memberId:id, amount: Math.round(v * rate * 100)/100};
+      });
+    }
+
+    const row = {
+      gathering_id: state.gathering.id,
+      description: desc,
+      amount: amount,
+      currency: currency,
+      exchange_rate: rate,
+      expense_date: expenseDate,
+      paid_by: paidByArr,
+      split: split,
+      split_type: splitType,
+      tax_applied: taxEnabled,
+      tax_service: taxEnabled ? servicePct : null,
+      tax_gst: taxEnabled ? gstPct : null,
+      subtotal: taxEnabled ? subtotal : null,
+      is_settlement: false
+    };
+
+    if(editId){
+      await sb.from("expenses").update(row).eq("id", editId);
+    } else {
+      await sb.from("expenses").insert(row);
+    }
+    closeModal();
+    await refreshData();
+  }
+
+  document.addEventListener("keydown", (ev) => {
+    if(ev.key === "Escape" && state.modal && state.modal.type !== "claim" && state.modal.type !== "auth-gate"){ closeModal(); }
+  });
+
+  boot();
+})();
+</script>
+</body>
+</html>
