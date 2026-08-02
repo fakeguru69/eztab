@@ -835,12 +835,6 @@
   function shareUrl(slug){
     return location.origin + location.pathname + "?g=" + encodeURIComponent(slug);
   }
-  function prettyShareUrl(slug){
-    // location.pathname already ends in "/" when index.html is served at the site root of the repo
-    let base = location.pathname;
-    if(!base.endsWith("/")) base = base.slice(0, base.lastIndexOf("/")+1);
-    return location.origin + base + encodeURIComponent(slug);
-  }
 
   // ============== ACCOUNTS (username + PIN, verified server-side) ==============
   function getSessionUsername(){ return localStorage.getItem("gd_session_username"); }
@@ -1152,7 +1146,7 @@
 
   function renderTopbar(){
     const g = state.gathering;
-    const link = prettyShareUrl(g.slug);
+    const link = shareUrl(g.slug);
     return `
       <div class="topbar">
         ${state.showClaimBanner ? `
