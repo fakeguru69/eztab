@@ -2187,26 +2187,38 @@
     const createBtn = document.querySelector('[data-action="create-group"]');
     if(createBtn){ createBtn.textContent = "Creating…"; createBtn.disabled = true; }
 
-    const slug = await generateUniqueSlug(slugEl.value.trim() || name);
-    const insertRow = {slug, name, settlement_currency: currencyEl.value};
-    if(state.username) insertRow.owner_username = state.username;
-    const {data: gathering, error} = await sb.from("gatherings").insert(insertRow).select().single();
-    if(error || !gathering){ alert("Something went wrong creating the Taby Event. Please try again."); return; }
+    try{
+      const slug = await generateUniqueSlug(slugEl.value.trim() || name);
+      const insertRow = {slug, name, settlement_currency: currencyEl.value};
+      if(state.username) insertRow.owner_username = state.username;
+      const {data: gathering, error} = await sb.from("gatherings").insert(insertRow).select().single();
+      if(error || !gathering){
+        console.error("create-group failed:", error);
+        alert("Something went wrong creating the Taby Event: " + (error ? (error.message || error.details || JSON.stringify(error)) : "no row returned"));
+        return;
+      }
 
-    const rows = [];
-    if(yourName) rows.push({gathering_id: gathering.id, name: yourName});
-    friendNames.forEach(n => rows.push({gathering_id: gathering.id, name: n}));
-    let insertedMembers = [];
-    if(rows.length){
-      const {data: mrows} = await sb.from("members").insert(rows).select();
-      insertedMembers = mrows || [];
+      const rows = [];
+      if(yourName) rows.push({gathering_id: gathering.id, name: yourName});
+      friendNames.forEach(n => rows.push({gathering_id: gathering.id, name: n}));
+      let insertedMembers = [];
+      if(rows.length){
+        const {data: mrows, error: memberError} = await sb.from("members").insert(rows).select();
+        if(memberError) console.error("member insert failed:", memberError);
+        insertedMembers = mrows || [];
+      }
+      addRecent({id: gathering.id, slug: gathering.slug, name: gathering.name});
+      if(yourName){
+        const me = insertedMembers.find(m => m.name === yourName);
+        if(me) setIdentity(gathering.id, me.id);
+      }
+      goToSlug(gathering.slug);
+    } catch(e){
+      console.error("create-group unexpected error:", e);
+      alert("Something went wrong creating the Taby Event: " + (e && e.message ? e.message : String(e)));
+    } finally {
+      if(createBtn){ createBtn.textContent = "Create Taby Event"; createBtn.disabled = false; }
     }
-    addRecent({id: gathering.id, slug: gathering.slug, name: gathering.name});
-    if(yourName){
-      const me = insertedMembers.find(m => m.name === yourName);
-      if(me) setIdentity(gathering.id, me.id);
-    }
-    goToSlug(gathering.slug);
   }
 
   async function handleCreateExpense(){
