@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><title>EZTAB</title></head>
+<body>
+<script>
+  // GitHub Pages serves this for any unmatched path under the repo.
+  // We turn /eztab/some-slug into /eztab/?g=some-slug so the app can load it.
+  (function(){
+    var parts = location.pathname.split("/").filter(Boolean); // e.g. ["eztab","some-slug"]
+    if(parts.length === 0){ location.replace("/"); return; }
+    var repo = parts[0];
+    var rest = parts.slice(1).join("/");
+    var base = "/" + repo + "/";
+    if(rest){
+      location.replace(base + "?g=" + encodeURIComponent(rest) + location.hash);
+    } else {
+      location.replace(base);
+    }
+  })();
+</script>
+<p style="font-family:sans-serif;color:#888;text-align:center;margin-top:40px;">Loading…</p>
+</body>
+</html>
