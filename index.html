@@ -538,11 +538,18 @@
   }
   .share-btn-sm:hover{border-color:var(--gold);}
   .claim-banner{
-    display:flex;align-items:center;justify-content:space-between;gap:10px;
+    display:flex;align-items:center;justify-content:space-between;gap:14px;
     background:var(--rust-soft);border:1px solid var(--rust);border-radius:10px;
     padding:10px 14px;margin-bottom:16px;font-size:13px;
   }
   .claim-banner button{flex:none;}
+  .claim-banner b{color:var(--ink);}
+  .claim-banner-actions{display:flex;align-items:center;gap:8px;flex:none;}
+  .claim-banner-dismiss{
+    background:none;border:none;color:var(--muted);cursor:pointer;
+    font-size:14px;padding:4px;line-height:1;
+  }
+  .claim-banner-dismiss:hover{color:var(--ink);}
   .home-wrap{max-width:720px;margin:0 auto;padding:40px 20px;}
   .account-box{
     background:var(--paper);border:1px solid var(--border);border-radius:12px;
@@ -557,6 +564,19 @@
   }
   .home-recent-item:hover{border-color:var(--brand-2);}
   .home-recent-name{font-weight:600;font-size:14.5px;}
+  .home-topline{display:flex;align-items:center;justify-content:space-between;margin-bottom:22px;}
+  .home-topline .brand-mark{opacity:0.7;}
+  .home-username{
+    font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:32px;
+    margin:0;letter-spacing:-0.4px;
+  }
+  .home-recent-tags{display:flex;align-items:center;gap:10px;flex:none;}
+  .home-recent-claim{
+    background:none;border:1px solid var(--border);border-radius:20px;
+    color:var(--gold);font-family:'Manrope',sans-serif;font-weight:600;
+    font-size:11.5px;padding:4px 10px;cursor:pointer;white-space:nowrap;
+  }
+  .home-recent-claim:hover{border-color:var(--gold);}
   .join-row{display:flex;gap:8px;margin-top:6px;}
   .join-row input{flex:1;}
   .claim-member-btn{
@@ -939,6 +959,7 @@
       }
     }
     state.myMemberId = identity || null;
+    state.showClaimBanner = !!(state.username && !result.gathering.owner_username);
     state.loaded = true;
     render();
     subscribeRealtime(result.gathering.id);
@@ -1041,28 +1062,13 @@
     `;
   }
 
-  function renderAccountBox(){
-    if(state.username){
-      return `
-        <div class="account-box">
-          <div class="account-row">
-            <span>Signed in as <b>@${escapeHtml(state.username)}</b></span>
-            <button class="share-btn-sm" data-action="acct-signout">Sign out</button>
-          </div>
-          ${state.myEvents.length ? `
-            <div class="section-label" style="margin-top:14px;">My Events</div>
-            <div class="home-recent-list">
-              ${state.myEvents.map(e => `
-                <div class="home-recent-item" data-action="open-recent" data-slug="${escapeHtml(e.slug)}">
-                  <span class="home-recent-name">${escapeHtml(e.name)}</span>
-                </div>
-              `).join("")}
-            </div>
-          ` : `<p style="color:var(--muted);font-size:13px;margin:12px 0 0;">Events you create under this account will show up here — sign in with the same username on any device to see them again.</p>`}
-        </div>
-      `;
-    }
-    return `<div class="account-box">${renderAuthForm()}</div>`;
+  function getUnifiedEvents(){
+    const recents = getRecents();
+    const onDeviceIds = new Set(recents.map(r => r.id));
+    const mineIds = new Set(state.myEvents.map(e => e.id));
+    const merged = state.myEvents.map(e => ({id:e.id, slug:e.slug, name:e.name, onDevice: onDeviceIds.has(e.id), linked:true}));
+    recents.forEach(r => { if(!mineIds.has(r.id)) merged.push({id:r.id, slug:r.slug, name:r.name, onDevice:true, linked:false}); });
+    return merged;
   }
 
   function renderHome(){
@@ -1087,24 +1093,29 @@
       `;
     }
 
-    const recents = getRecents();
+    const unified = getUnifiedEvents();
     return `
       <div class="home-wrap" style="width:100%;">
-        <h1 class="brand-mark" style="font-size:34px;margin:0;">EZTaby</h1>
-        <div class="brand-tagline" style="margin:2px 0 26px;">the fuss-free way to keep track of multi-party spending</div>
-        ${renderAccountBox()}
-        ${recents.length ? `
-          <div class="section-label">On this device</div>
+        <div class="home-topline">
+          <span class="brand-mark" style="font-size:15px;">EZTaby</span>
+          <button class="share-btn-sm" data-action="acct-signout">Sign out</button>
+        </div>
+        <h1 class="home-username">@${escapeHtml(state.username)}</h1>
+        <div class="section-label" style="margin-top:26px;">Taby Events</div>
+        ${unified.length ? `
           <div class="home-recent-list">
-            ${recents.map(r => `
-              <div class="home-recent-item" data-action="open-recent" data-slug="${escapeHtml(r.slug)}">
-                <span class="home-recent-name">${escapeHtml(r.name)}</span>
-                <button class="group-tab-delete" data-action="forget-recent" data-id="${r.id}" title="Remove from this device">✕</button>
+            ${unified.map(e => `
+              <div class="home-recent-item" data-action="open-recent" data-slug="${escapeHtml(e.slug)}">
+                <span class="home-recent-name">${escapeHtml(e.name)}</span>
+                <span class="home-recent-tags">
+                  ${!e.linked ? `<button class="home-recent-claim" data-action="claim-event" data-id="${e.id}" title="Add to your account">+ Add to account</button>` : ""}
+                  ${e.onDevice ? `<button class="group-tab-delete" data-action="forget-recent" data-id="${e.id}" title="Remove from this device">✕</button>` : ""}
+                </span>
               </div>
             `).join("")}
           </div>
-        ` : ""}
-        <button class="btn-primary" data-action="open-new-group">+ New Taby Event</button>
+        ` : `<p style="color:var(--muted);font-size:13px;margin:10px 0 0;">No Taby Events yet — create one below, or open a link someone shared with you.</p>`}
+        <button class="btn-primary" data-action="open-new-group" style="margin-top:18px;">+ New Taby Event</button>
         <div class="field" style="margin-top:26px;">
           <label>Have a link or code?</label>
           <div class="join-row">
@@ -1144,6 +1155,15 @@
     const link = prettyShareUrl(g.slug);
     return `
       <div class="topbar">
+        ${state.showClaimBanner ? `
+          <div class="claim-banner">
+            <span>This Taby Event isn't linked to <b>@${escapeHtml(state.username)}</b> yet — add it so it stays findable even if this device's storage gets cleared.</span>
+            <div class="claim-banner-actions">
+              <button class="btn-primary" style="padding:6px 14px;font-size:12.5px;" data-action="claim-event" data-id="${g.id}">Add to my account</button>
+              <button class="claim-banner-dismiss" data-action="dismiss-claim-banner" title="Dismiss">✕</button>
+            </div>
+          </div>
+        ` : ""}
         <div class="topbar-row">
           <div>
             <h1 class="group-title" data-action="open-rename-gathering" title="Rename Taby Event">${escapeHtml(g.name)}</h1>
@@ -1873,6 +1893,24 @@
     }
     else if(action === "open-recent"){
       goToSlug(el.dataset.slug);
+    }
+    else if(action === "claim-event"){
+      ev.stopPropagation();
+      const id = el.dataset.id;
+      el.disabled = true; el.textContent = "Adding…";
+      const {error} = await sb.from("gatherings").update({owner_username: state.username}).eq("id", id);
+      if(!error){
+        if(state.gathering && state.gathering.id === id){
+          state.gathering.owner_username = state.username;
+          state.showClaimBanner = false;
+        }
+        await loadMyEvents();
+      }
+      render();
+    }
+    else if(action === "dismiss-claim-banner"){
+      state.showClaimBanner = false;
+      render();
     }
     else if(action === "forget-recent"){
       ev.stopPropagation();
