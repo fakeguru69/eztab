@@ -409,6 +409,25 @@
   .home-card-new:hover{border-color:var(--gold);color:var(--ink);background:var(--sand-2);transform:none;}
   .home-card-new-plus{font-size:26px;line-height:1;color:var(--brand-2);}
 
+  /* ---------- Toast ---------- */
+  .toast{
+    position:fixed;left:50%;bottom:28px;transform:translateX(-50%);
+    background:var(--paper);border:1px solid var(--border);border-radius:10px;
+    box-shadow:0 8px 28px rgba(0,0,0,0.55);
+    padding:12px 14px 12px 18px;
+    display:flex;align-items:center;gap:16px;
+    z-index:60;max-width:calc(100vw - 32px);
+    animation:toast-in 0.18s ease-out;
+  }
+  @keyframes toast-in{ from{opacity:0;transform:translate(-50%,8px);} to{opacity:1;transform:translate(-50%,0);} }
+  .toast-msg{font-size:13.5px;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:60vw;}
+  .toast-undo-btn{
+    background:none;border:none;color:var(--gold);font-weight:700;
+    font-family:'Manrope',sans-serif;font-size:13.5px;cursor:pointer;
+    padding:4px 6px;flex:none;
+  }
+  .toast-undo-btn:hover{color:var(--brand-2);}
+
   /* ---------- Modal ---------- */
   .modal-backdrop{
     position:fixed;inset:0;background:rgba(0,0,0,0.65);
@@ -639,8 +658,14 @@
     username: null,
     myEvents: [],
     authUI: {mode:"signin", error:null, question:null, forgotUsername:null, onSuccessAction:"home"},
-    showAuthOnHome: false
+    showAuthOnHome: false,
+    pendingDeleteIds: {} // expense ids optimistically hidden while an undo window is open
   };
+  const pendingDeleteTimers = {}; // id -> {timeoutId, expense}
+
+  function visibleExpenses(){
+    return state.expenses.filter(e => !state.pendingDeleteIds[e.id]);
+  }
 
   // ============== SUPABASE DATA LAYER ==============
   function mapExpenseRow(r){
@@ -747,7 +772,7 @@
   function computeNet(){
     const net = {};
     state.members.forEach(m => net[m.id] = 0);
-    state.expenses.forEach(e => {
+    visibleExpenses().forEach(e => {
       e.paidBy.forEach(p => { net[p.memberId] = (net[p.memberId] || 0) + p.amount; });
       e.split.forEach(s => { net[s.memberId] = (net[s.memberId] || 0) - s.amount; });
     });
@@ -1121,7 +1146,7 @@
       <div class="topbar">
         <div class="topbar-row">
           <div>
-            <h1 class="group-title" data-action="open-rename-gathering" title="Rename gathering">${escapeHtml(g.name)}</h1>
+            <h1 class="group-title" data-action="open-rename-gathering" title="Rename Taby Event">${escapeHtml(g.name)}</h1>
           </div>
           <button class="btn-primary" data-action="open-add-expense">+ Add expense</button>
         </div>
@@ -1160,7 +1185,8 @@
 
   function renderExpenses(){
     const g = state.gathering;
-    if(state.expenses.length === 0){
+    const visible = visibleExpenses();
+    if(visible.length === 0){
       return `
         <div class="empty-state">
           <h3>The ledger awaits enlightenment</h3>
@@ -1169,7 +1195,7 @@
         </div>
       `;
     }
-    const sorted = [...state.expenses].sort((a,b)=>b.date-a.date);
+    const sorted = [...visible].sort((a,b)=>b.date-a.date);
     const memberById = {};
     state.members.forEach(m => memberById[m.id] = m);
 
@@ -1267,6 +1293,24 @@
       <div class="section-label">Suggested settlements</div>
       ${txnHtml}
     `;
+  }
+
+  // ============== TOAST (undo) ==============
+  let toastTimer = null;
+  function showToast(message, onUndo){
+    const old = document.querySelector(".toast");
+    if(old) old.remove();
+    if(toastTimer) clearTimeout(toastTimer);
+    const toast = document.createElement("div");
+    toast.className = "toast";
+    toast.innerHTML = `<span class="toast-msg">${escapeHtml(message)}</span><button class="toast-undo-btn">Undo</button>`;
+    document.body.appendChild(toast);
+    toast.querySelector(".toast-undo-btn").addEventListener("click", () => {
+      toast.remove();
+      if(toastTimer) clearTimeout(toastTimer);
+      onUndo();
+    });
+    toastTimer = setTimeout(() => { toast.remove(); }, 5000);
   }
 
   // ============== MODALS ==============
@@ -1380,7 +1424,7 @@
         </div>
         <div class="modal-foot">
           <button class="btn-secondary" data-action="close-modal">Cancel</button>
-          <button class="btn-primary" data-action="create-group">Create gathering</button>
+          <button class="btn-primary" data-action="create-group">Create Taby Event</button>
         </div>
       </div>
     `;
@@ -1411,7 +1455,7 @@
         <div class="modal-body">
           <div class="field">
             <label>Taby Event name</label>
-            <input type="text" id="f-gathering-rename" placeholder="Gathering name" value="${escapeHtml(data.name||"")}">
+            <input type="text" id="f-gathering-rename" placeholder="Taby Event name" value="${escapeHtml(data.name||"")}">
           </div>
         </div>
         <div class="modal-foot">
@@ -1855,10 +1899,11 @@
     }
     else if(action === "native-share"){
       const link = el.dataset.link, name = el.dataset.name;
+      const shareText = `Join "${name}" on EZTaby to split expenses together`;
       if(navigator.share){
-        try{ await navigator.share({title: name, text: `Join our Taby Event "${name}" on EZTaby`, url: link}); }catch(e){}
+        try{ await navigator.share({title: name, text: shareText, url: link}); }catch(e){}
       } else {
-        try{ await navigator.clipboard.writeText(link); alert("Link copied — paste it into WhatsApp, email, or a text message."); }catch(e){ alert(link); }
+        try{ await navigator.clipboard.writeText(`${shareText}: ${link}`); alert("Message copied — paste it into WhatsApp, email, or a text message."); }catch(e){ alert(`${shareText}: ${link}`); }
       }
     }
     else if(action === "auth-mode"){
@@ -2057,8 +2102,23 @@
     }
     else if(action === "delete-expense"){
       ev.stopPropagation();
-      await sb.from("expenses").delete().eq("id", el.dataset.id);
-      await refreshData();
+      const id = el.dataset.id;
+      const exp = state.expenses.find(x => x.id === id);
+      state.pendingDeleteIds[id] = true;
+      render();
+      const timeoutId = setTimeout(async () => {
+        delete pendingDeleteTimers[id];
+        delete state.pendingDeleteIds[id];
+        await sb.from("expenses").delete().eq("id", id);
+        await refreshData();
+      }, 5000);
+      pendingDeleteTimers[id] = {timeoutId, expense: exp};
+      showToast(`Deleted "${exp ? exp.desc : "expense"}"`, () => {
+        const pending = pendingDeleteTimers[id];
+        if(pending){ clearTimeout(pending.timeoutId); delete pendingDeleteTimers[id]; }
+        delete state.pendingDeleteIds[id];
+        render();
+      });
     }
     else if(action === "settle"){
       const from = el.dataset.from, to = el.dataset.to, amount = parseFloat(el.dataset.amount);
