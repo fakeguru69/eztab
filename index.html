@@ -4,6 +4,18 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>EZTaby</title>
+<script>
+  // Decodes the redirect that 404.html performs for pretty URLs like /eztab/bali2026,
+  // restoring the clean path in the address bar before the app boots.
+  (function(l) {
+    if (l.search[1] === '/') {
+      var decoded = l.search.slice(1).split('&').map(function(s) {
+        return s.replace(/~and~/g, '&');
+      }).join('?');
+      window.history.replaceState(null, null, l.pathname.slice(0, -1) + decoded + l.hash);
+    }
+  }(window.location));
+</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Manrope:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
@@ -563,20 +575,39 @@
     padding:14px 16px;cursor:pointer;
   }
   .home-recent-item:hover{border-color:var(--brand-2);}
-  .home-recent-name{font-weight:600;font-size:14.5px;}
-  .home-topline{display:flex;align-items:center;justify-content:space-between;margin-bottom:22px;}
-  .home-topline .brand-mark{opacity:0.7;}
+  .home-recent-name{font-weight:600;font-size:15.5px;}
+  .identity-card{
+    background:var(--paper);border:1px solid var(--border);border-radius:14px;
+    padding:18px 20px;margin-top:14px;
+  }
+  .home-topline{display:flex;align-items:center;justify-content:space-between;gap:12px;}
   .home-username{
-    font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:32px;
+    font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:30px;
     margin:0;letter-spacing:-0.4px;
   }
-  .home-recent-tags{display:flex;align-items:center;gap:10px;flex:none;}
+  .home-overall{font-size:13.5px;color:var(--ink);margin-top:10px;font-weight:600;}
+  .home-overall.pos{color:var(--moss);}
+  .home-overall.neg{color:var(--rust);}
+  .home-overall-sub{color:var(--muted);font-weight:500;}
+  .home-recent-tags{display:flex;align-items:center;gap:12px;flex:none;}
   .home-recent-claim{
     background:none;border:1px solid var(--border);border-radius:20px;
     color:var(--gold);font-family:'Manrope',sans-serif;font-weight:600;
     font-size:11.5px;padding:4px 10px;cursor:pointer;white-space:nowrap;
   }
   .home-recent-claim:hover{border-color:var(--gold);}
+  .home-recent-balance{
+    text-align:right;font-family:'JetBrains Mono',monospace;font-size:13.5px;
+    font-weight:600;color:var(--ink);line-height:1.3;white-space:nowrap;
+  }
+  .home-recent-balance.pos{color:var(--moss);}
+  .home-recent-balance.neg{color:var(--rust);}
+  .home-recent-balance-sub{
+    display:block;font-family:'Manrope',sans-serif;font-weight:500;
+    font-size:10.5px;color:var(--muted);
+  }
+  .home-actions-row{display:flex;gap:10px;margin-top:18px;}
+  .home-actions-row .btn-primary, .home-actions-row .btn-secondary{flex:1;}
   .join-row{display:flex;gap:8px;margin-top:6px;}
   .join-row input{flex:1;}
   .claim-member-btn{
@@ -679,7 +710,8 @@
     myEvents: [],
     authUI: {mode:"signin", error:null, question:null, forgotUsername:null, onSuccessAction:"home"},
     showAuthOnHome: false,
-    pendingDeleteIds: {} // expense ids optimistically hidden while an undo window is open
+    pendingDeleteIds: {}, // expense ids optimistically hidden while an undo window is open
+    homeBalances: {} // {gatheringId: {amount, currency}} — "my" net balance per event on the home list
   };
   const pendingDeleteTimers = {}; // id -> {timeoutId, expense}
 
@@ -823,17 +855,38 @@
   }
 
   // ============== ROUTING ==============
+  function basePath(){
+    // The folder index.html lives in, e.g. "/eztab/" — works whether the
+    // current URL is the bare folder, "/index.html", or "/eztab/somslug".
+    let p = location.pathname;
+    if(p.toLowerCase().endsWith("/index.html")) p = p.slice(0, -"index.html".length);
+    // If we're on an event path like /eztab/bali2026, walk back up to the
+    // first segment (the repo name) — that's our stable base for building links.
+    const parts = p.split("/").filter(Boolean);
+    if(!p.endsWith("/") && parts.length){
+      return "/" + parts.slice(0, 1).join("/") + "/";
+    }
+    if(!p.endsWith("/")) p += "/";
+    return p;
+  }
   function currentSlug(){
+    const base = basePath();
+    let path = location.pathname;
+    if(path.toLowerCase().endsWith("/index.html")) path = path.slice(0, -"index.html".length);
+    if(path.startsWith(base) && path.length > base.length){
+      return decodeURIComponent(path.slice(base.length).replace(/\/$/, "")) || null;
+    }
+    // Backward-compat: links shared before pretty URLs used ?g=slug
     return new URLSearchParams(location.search).get("g");
   }
   function goToSlug(slug){
-    location.href = location.pathname + "?g=" + encodeURIComponent(slug);
+    location.href = basePath() + encodeURIComponent(slug);
   }
   function goHome(){
-    location.href = location.pathname;
+    location.href = basePath();
   }
   function shareUrl(slug){
-    return location.origin + location.pathname + "?g=" + encodeURIComponent(slug);
+    return location.origin + basePath() + encodeURIComponent(slug);
   }
 
   // ============== ACCOUNTS (username + PIN, verified server-side) ==============
@@ -848,8 +901,16 @@
 
   async function loadMyEvents(){
     if(!state.username) { state.myEvents = []; return; }
-    const {data} = await sb.from("gatherings").select("*").eq("owner_username", state.username).order("created_at", {ascending:false});
-    state.myEvents = data || [];
+    const {data, error} = await sb.from("account_events")
+      .select("gathering_id, created_at, gatherings(*)")
+      .eq("username", state.username)
+      .order("created_at", {ascending:false});
+    if(error){ console.error("loadMyEvents failed:", error); state.myEvents = []; return; }
+    state.myEvents = (data||[]).map(r => r.gatherings).filter(Boolean);
+  }
+  async function pinEventToAccount(gatheringId){
+    if(!state.username) return;
+    await sb.from("account_events").upsert({username: state.username, gathering_id: gatheringId}, {onConflict: "username,gathering_id"});
   }
 
   async function acctSignUp(username, pin, question, answer){
@@ -921,6 +982,7 @@
     } else {
       closeModal();
       render();
+      refreshHomeBalances();
     }
   }
 
@@ -931,6 +993,7 @@
     if(!slug){
       state.loaded = true;
       render();
+      refreshHomeBalances();
       return;
     }
     const result = await fetchGatheringBySlug(slug);
@@ -945,6 +1008,11 @@
     state.expenses = result.expenses;
     addRecent({id: result.gathering.id, slug: result.gathering.slug, name: result.gathering.name});
     let identity = getIdentity(result.gathering.id);
+    let isPinned = false;
+    if(state.username){
+      const {data: pinRow} = await sb.from("account_events").select("username").eq("gathering_id", result.gathering.id).eq("username", state.username).maybeSingle();
+      isPinned = !!pinRow;
+    }
     if(!identity && state.username){
       const usernameMatch = state.members.find(m => m.claimedUsername === state.username);
       if(usernameMatch){
@@ -952,8 +1020,13 @@
         identity = usernameMatch.id;
       }
     }
+    if(state.username && identity && !isPinned){
+      await pinEventToAccount(result.gathering.id);
+      isPinned = true;
+      await loadMyEvents();
+    }
     state.myMemberId = identity || null;
-    state.showClaimBanner = !!(state.username && !result.gathering.owner_username);
+    state.showClaimBanner = !!(state.username && !isPinned);
     state.loaded = true;
     render();
     subscribeRealtime(result.gathering.id);
@@ -1065,6 +1138,43 @@
     return merged;
   }
 
+  // Computes "my" net balance for each event on the home list. Not cached
+  // server-side yet — fine for a handful of events, worth a cache table if
+  // this list grows large.
+  async function loadHomeBalances(unified){
+    const results = {};
+    await Promise.all(unified.map(async e => {
+      const [{data: g}, {data: members}, {data: expenses}] = await Promise.all([
+        sb.from("gatherings").select("settlement_currency").eq("id", e.id).maybeSingle(),
+        sb.from("members").select("id, claimed_username").eq("gathering_id", e.id),
+        sb.from("expenses").select("paid_by, split").eq("gathering_id", e.id)
+      ]);
+      if(!members || !members.length) return;
+      const net = {};
+      members.forEach(m => net[m.id] = 0);
+      (expenses||[]).forEach(x => {
+        (Array.isArray(x.paid_by) ? x.paid_by : []).forEach(p => { net[p.memberId] = (net[p.memberId]||0) + p.amount; });
+        (x.split||[]).forEach(s => { net[s.memberId] = (net[s.memberId]||0) - s.amount; });
+      });
+      let myId = null;
+      if(state.username){
+        const mine = members.find(m => m.claimed_username === state.username);
+        if(mine) myId = mine.id;
+      }
+      if(!myId) myId = getIdentity(e.id);
+      if(myId && net[myId] !== undefined){
+        results[e.id] = {amount: Math.round(net[myId]*100)/100, currency: (g && g.settlement_currency) || "USD"};
+      }
+    }));
+    return results;
+  }
+  async function refreshHomeBalances(){
+    const unified = getUnifiedEvents();
+    if(!unified.length){ state.homeBalances = {}; return; }
+    state.homeBalances = await loadHomeBalances(unified);
+    render();
+  }
+
   function renderHome(){
     if(!state.username){
       return `
@@ -1088,34 +1198,59 @@
     }
 
     const unified = getUnifiedEvents();
+    // Combined "you're owed / you owe" line — only when every event on the list
+    // shares one currency, so we're never adding SGD to MYR and calling it a number.
+    let overallLine = "";
+    const balanceEntries = unified.map(e => state.homeBalances[e.id]).filter(Boolean);
+    if(balanceEntries.length){
+      const currencies = new Set(balanceEntries.map(b => b.currency));
+      if(currencies.size === 1){
+        const total = Math.round(balanceEntries.reduce((s,b)=>s+b.amount,0)*100)/100;
+        if(Math.abs(total) > 0.005){
+          overallLine = `<div class="home-overall ${total<0?'neg':'pos'}">${total>0?"You're owed":"You owe"} ${fmt(Math.abs(total), balanceEntries[0].currency)}<span class="home-overall-sub"> across ${balanceEntries.length} event${balanceEntries.length===1?"":"s"}</span></div>`;
+        } else {
+          overallLine = `<div class="home-overall">You're all settled up<span class="home-overall-sub"> across ${balanceEntries.length} event${balanceEntries.length===1?"":"s"}</span></div>`;
+        }
+      } else {
+        overallLine = `<div class="home-overall">${unified.length} Taby Event${unified.length===1?"":"s"}<span class="home-overall-sub"> · balances in different currencies</span></div>`;
+      }
+    }
+
     return `
       <div class="home-wrap" style="width:100%;">
-        <div class="home-topline">
-          <span class="brand-mark" style="font-size:15px;">EZTaby</span>
-          <button class="share-btn-sm" data-action="acct-signout">Sign out</button>
+        <span class="brand-mark" style="font-size:15px;opacity:0.7;">EZTaby</span>
+        <div class="identity-card">
+          <div class="home-topline">
+            <h1 class="home-username">@${escapeHtml(state.username)}</h1>
+            <button class="share-btn-sm" data-action="acct-signout">Sign out</button>
+          </div>
+          ${overallLine}
         </div>
-        <h1 class="home-username">@${escapeHtml(state.username)}</h1>
         <div class="section-label" style="margin-top:26px;">Taby Events</div>
         ${unified.length ? `
           <div class="home-recent-list">
-            ${unified.map(e => `
+            ${unified.map(e => {
+              const bal = state.homeBalances[e.id];
+              return `
               <div class="home-recent-item" data-action="open-recent" data-slug="${escapeHtml(e.slug)}">
                 <span class="home-recent-name">${escapeHtml(e.name)}</span>
                 <span class="home-recent-tags">
                   ${!e.linked ? `<button class="home-recent-claim" data-action="claim-event" data-id="${e.id}" title="Add to your account">+ Add to account</button>` : ""}
+                  ${bal ? `
+                    <span class="home-recent-balance ${bal.amount<0?'neg':bal.amount>0?'pos':''}">
+                      ${Math.abs(bal.amount) > 0.005 ? fmt(Math.abs(bal.amount), bal.currency) : fmt(0, bal.currency)}
+                      <span class="home-recent-balance-sub">${bal.amount>0.005?"you're owed":bal.amount<-0.005?"you owe":"settled up"}</span>
+                    </span>
+                  ` : ""}
                   ${e.onDevice ? `<button class="group-tab-delete" data-action="forget-recent" data-id="${e.id}" title="Remove from this device">✕</button>` : ""}
                 </span>
               </div>
-            `).join("")}
+            `;}).join("")}
           </div>
         ` : `<p style="color:var(--muted);font-size:13px;margin:10px 0 0;">No Taby Events yet — create one below, or open a link someone shared with you.</p>`}
-        <button class="btn-primary" data-action="open-new-group" style="margin-top:18px;">+ New Taby Event</button>
-        <div class="field" style="margin-top:26px;">
-          <label>Have a link or code?</label>
-          <div class="join-row">
-            <input type="text" id="f-join-link" placeholder="Paste the link or event code">
-            <button class="btn-secondary" data-action="join-link">Open</button>
-          </div>
+        <div class="home-actions-row">
+          <button class="btn-primary" data-action="open-new-group">+ New Taby Event</button>
+          <button class="btn-secondary" data-action="open-join-code">Join with code</button>
         </div>
       </div>
     `;
@@ -1338,6 +1473,7 @@
     const m = state.modal;
     let inner = "";
     if(m.type === "new-group") inner = modalNewGroup();
+    else if(m.type === "join-code") inner = modalJoinCode();
     else if(m.type === "auth-gate") inner = modalAuthGate();
     else if(m.type === "rename-gathering") inner = modalRenameGathering(m.data || {});
     else if(m.type === "add-member") inner = modalAddMember();
@@ -1457,6 +1593,24 @@
         <div class="modal-foot">
           <button class="btn-secondary" data-action="close-modal">Cancel</button>
           <button class="btn-primary" data-action="create-member">Add to event</button>
+        </div>
+      </div>
+    `;
+  }
+
+  function modalJoinCode(){
+    return `
+      <div class="modal">
+        <div class="modal-head"><h2>Have a link or code?</h2><button class="modal-close" data-action="close-modal">✕</button></div>
+        <div class="modal-body">
+          <div class="field">
+            <label>Paste the link, or type the event code</label>
+            <input type="text" id="f-join-link" placeholder="e.g. bali2026" autofocus>
+          </div>
+        </div>
+        <div class="modal-foot">
+          <button class="btn-secondary" data-action="close-modal">Cancel</button>
+          <button class="btn-primary" data-action="join-link">Open</button>
         </div>
       </div>
     `;
@@ -1879,6 +2033,10 @@
       }
       renderModal();
     }
+    else if(action === "open-join-code"){
+      state.modal = {type:"join-code"};
+      renderModal();
+    }
     else if(action === "go-home"){
       goHome();
     }
@@ -1892,15 +2050,17 @@
       ev.stopPropagation();
       const id = el.dataset.id;
       el.disabled = true; el.textContent = "Adding…";
-      const {error} = await sb.from("gatherings").update({owner_username: state.username}).eq("id", id);
-      if(!error){
+      try{
+        await pinEventToAccount(id);
         if(state.gathering && state.gathering.id === id){
-          state.gathering.owner_username = state.username;
           state.showClaimBanner = false;
         }
         await loadMyEvents();
+      }catch(e){
+        console.error("claim-event failed:", e);
       }
       render();
+      refreshHomeBalances();
     }
     else if(action === "dismiss-claim-banner"){
       state.showClaimBanner = false;
@@ -2012,12 +2172,16 @@
       state.myEvents = [];
       state.showAuthOnHome = false;
       render();
+      refreshHomeBalances();
     }
     else if(action === "claim-member"){
       setIdentity(state.gathering.id, el.dataset.id);
       state.myMemberId = el.dataset.id;
       if(state.username){
         await sb.from("members").update({claimed_username: state.username}).eq("id", el.dataset.id);
+        await pinEventToAccount(state.gathering.id);
+        state.showClaimBanner = false;
+        await loadMyEvents();
       }
       closeModal();
       await refreshData();
@@ -2032,6 +2196,11 @@
       if(data){
         setIdentity(state.gathering.id, data.id);
         state.myMemberId = data.id;
+        if(state.username){
+          await pinEventToAccount(state.gathering.id);
+          state.showClaimBanner = false;
+          await loadMyEvents();
+        }
       }
       closeModal();
       await refreshData();
@@ -2193,7 +2362,11 @@
       }
 
       const rows = [];
-      if(yourName) rows.push({gathering_id: gathering.id, name: yourName});
+      if(yourName){
+        const myRow = {gathering_id: gathering.id, name: yourName};
+        if(state.username) myRow.claimed_username = state.username;
+        rows.push(myRow);
+      }
       friendNames.forEach(n => rows.push({gathering_id: gathering.id, name: n}));
       let insertedMembers = [];
       if(rows.length){
@@ -2205,6 +2378,9 @@
       if(yourName){
         const me = insertedMembers.find(m => m.name === yourName);
         if(me) setIdentity(gathering.id, me.id);
+      }
+      if(state.username){
+        await pinEventToAccount(gathering.id);
       }
       goToSlug(gathering.slug);
     } catch(e){

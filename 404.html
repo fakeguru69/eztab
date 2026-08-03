@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>EZTaby</title>
+<script>
+  // Single Page Apps for GitHub Pages
+  // Turns a request for /eztab/bali2026 (which doesn't exist as a real file,
+  // so GitHub serves this 404 page) into a redirect back to /eztab/index.html
+  // with the intended path preserved so the app can restore it.
+  // pathSegmentsToKeep = 1 keeps the "/eztab" part of the URL as the app's base.
+  var pathSegmentsToKeep = 1;
+  var l = window.location;
+  l.replace(
+    l.protocol + '//' + l.hostname + (l.port ? ':' + l.port : '') +
+    l.pathname.split('/').slice(0, 1 + pathSegmentsToKeep).join('/') + '/?/' +
+    l.pathname.slice(1).split('/').slice(pathSegmentsToKeep).join('/').replace(/&/g, '~and~') +
+    (l.search ? '&' + l.search.slice(1).replace(/&/g, '~and~') : '') +
+    l.hash
+  );
+</script>
+</head>
+<body></body>
+</html>
