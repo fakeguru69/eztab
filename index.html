@@ -526,9 +526,100 @@
 
   @media (max-width:760px){
     #app{flex-direction:column;}
-    .sidebar{width:100%;min-width:0;height:auto;max-height:40vh;border-right:none;border-bottom:1px solid var(--border);}
-    .topbar{padding:20px 18px 0;}
-    .content{padding:20px 18px 40px;}
+    .sidebar{
+      width:100%;min-width:0;height:auto;max-height:none;
+      border-right:none;border-bottom:1px solid var(--border);
+      display:flex;flex-direction:row;flex-wrap:wrap;align-items:center;
+      justify-content:space-between;gap:8px 14px;padding:12px 16px;
+    }
+    .sidebar .brand{
+      padding:0;border-bottom:none;display:flex;align-items:center;gap:10px;
+      flex:1;min-width:0;
+    }
+    .sidebar .brand-top{display:block;}
+    .sidebar .brand-text{min-width:0;overflow:hidden;}
+    .sidebar .brand-mark{font-size:17px;white-space:nowrap;}
+    .sidebar .brand-tagline{display:none;}
+    .sidebar .overall{margin-top:0;font-size:12px;white-space:nowrap;}
+    .sidebar .overall b.amt{font-size:12.5px;}
+    .sidebar .new-group-btn{
+      margin:0;padding:7px 14px;font-size:12.5px;border-radius:20px;
+      flex:none;width:auto;text-align:center;
+    }
+
+    .topbar{padding:14px 16px 0;}
+    .topbar-row{align-items:center;}
+    .group-title{font-size:23px;line-height:1.15;}
+    .claim-banner{flex-wrap:wrap;}
+
+    /* Add-expense becomes a thumb-friendly floating button instead of
+       competing with the title for header width. */
+    .topbar-row .btn-primary[data-action="open-add-expense"]{
+      position:fixed;
+      right:16px;
+      bottom:calc(16px + env(safe-area-inset-bottom));
+      z-index:40;
+      width:56px;height:56px;border-radius:50%;
+      padding:0;display:flex;align-items:center;justify-content:center;
+      font-size:0;line-height:1;
+      box-shadow:0 8px 22px rgba(108,79,242,0.45);
+    }
+    .topbar-row .btn-primary[data-action="open-add-expense"]::before{
+      content:"+";
+      font-family:'Manrope',sans-serif;
+      font-size:28px;font-weight:600;color:#fff;
+    }
+
+    /* Share bar: the raw link is unreadable at this width and rarely what
+       people tap — keep the actions, drop the link text. */
+    .share-bar{padding:8px;gap:6px;}
+    .share-link-text{display:none;}
+    .share-btn-sm{flex:1;text-align:center;padding:9px 8px;}
+
+    /* Member strip: scroll instead of wrap so the header height stays
+       predictable no matter how many people are on the trip. */
+    .member-row{
+      flex-wrap:nowrap;overflow-x:auto;-webkit-overflow-scrolling:touch;
+      margin:0 -16px 14px;padding:0 16px 4px;
+      scrollbar-width:none;
+    }
+    .member-row::-webkit-scrollbar{display:none;}
+    .member-chip, .add-member-chip{flex:none;}
+
+    /* Full-width tabs are easier to hit with a thumb than tight text links. */
+    .tabs{border-bottom:1px solid var(--border);}
+    .tab-btn{flex:1;text-align:center;margin-right:0;padding:11px 4px 12px;}
+
+    .content{padding:16px 16px 100px;}
+
+    .modal-backdrop{align-items:flex-end;padding:0;}
+    .modal{
+      max-width:100%;width:100%;border-radius:16px 16px 0 0;
+      max-height:92vh;
+    }
+    .modal-head{padding:16px 18px 12px;}
+    .modal-body{padding:16px 18px;}
+    .modal-foot{
+      padding:14px 18px calc(14px + env(safe-area-inset-bottom));
+      position:sticky;bottom:0;background:var(--paper);
+      border-top:1px solid var(--border);
+    }
+    .modal-foot .btn-secondary, .modal-foot .btn-primary{flex:1;}
+
+    .amount-currency-row{gap:8px;}
+    .amount-currency-row .currency-field{width:98px !important;}
+    .split-toggle button{font-size:12px;padding:8px 3px;}
+
+    .home-wrap{padding:24px 16px;}
+    .home-topline{flex-wrap:wrap;row-gap:8px;}
+    .home-recent-item{flex-wrap:wrap;row-gap:8px;}
+  }
+
+  @media (max-width:380px){
+    .group-title{font-size:20px;}
+    .amount-currency-row{flex-wrap:wrap;}
+    .amount-currency-row .field{flex:1 1 100% !important;width:auto !important;}
+    .tax-rates-row{gap:8px;}
   }
   [hidden]{display:none !important;}
 </style>
@@ -1675,12 +1766,12 @@
             <label>Date</label>
             <input type="date" id="f-exp-date" value="${prefill.expenseDate || today}">
           </div>
-          <div style="display:flex;gap:10px;">
+          <div class="amount-currency-row" style="display:flex;gap:10px;">
             <div class="field" style="flex:1;">
               <label id="amount-label">${taxEnabled ? "Subtotal (before tax & service)" : "Amount"}</label>
               <input type="number" id="f-exp-amount" step="0.01" min="0" placeholder="0.00" value="${prefill.amount||""}">
             </div>
-            <div class="field" style="width:110px;">
+            <div class="field currency-field" style="width:110px;">
               <label>Currency</label>
               <select id="f-exp-currency">
                 ${CURRENCIES.map(c => `<option value="${c}" ${c===currency?'selected':''}>${c}</option>`).join("")}
