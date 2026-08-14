@@ -592,6 +592,17 @@
 
     .content{padding:16px 16px 100px;}
 
+    /* Expense rows: the amount column (amount + converted + "you lent…")
+       was sizing itself off its longest line and crowding out the
+       description column, which is the one people actually read. */
+    .expense-row{padding:14px;gap:10px;}
+    .expense-stamp{width:36px;height:36px;font-size:12px;}
+    .expense-desc{font-size:14.5px;}
+    .expense-meta{font-size:12px;}
+    .expense-amt-col{max-width:98px;}
+    .expense-amt{font-size:14.5px;}
+    .expense-share{font-size:10.5px;}
+
     .modal-backdrop{align-items:flex-end;padding:0;}
     .modal{
       max-width:100%;width:100%;border-radius:16px 16px 0 0;
