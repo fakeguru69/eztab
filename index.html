@@ -719,6 +719,11 @@
     font-family:'Manrope',sans-serif;font-size:14px;font-weight:600;
   }
   .claim-member-btn:hover{border-color:var(--gold);}
+  .claim-member-btn.taken{
+    cursor:default;opacity:0.55;
+  }
+  .claim-member-btn.taken:hover{border-color:var(--border);}
+  .claim-member-taken-note{color:var(--muted);font-weight:500;font-size:12.5px;}
   .skip-claim{
     display:block;width:100%;text-align:center;background:none;border:none;
     color:var(--muted);font-size:12.5px;padding:10px 0 0;cursor:pointer;text-decoration:underline;
@@ -1110,6 +1115,17 @@
     state.expenses = result.expenses;
     addRecent({id: result.gathering.id, slug: result.gathering.slug, name: result.gathering.name});
     let identity = getIdentity(result.gathering.id);
+    // If we're signed in and our cached local identity now belongs to a
+    // DIFFERENT account (someone else reclaimed it since we last opened this
+    // event), the cache is stale — drop it so the claim flow re-triggers
+    // automatically instead of silently impersonating the wrong member.
+    if(identity && state.username){
+      const cachedMember = result.members.find(m => m.id === identity);
+      if(cachedMember && cachedMember.claimedUsername && cachedMember.claimedUsername !== state.username){
+        localStorage.removeItem("gd_identity_"+result.gathering.id);
+        identity = null;
+      }
+    }
     let isPinned = false;
     if(state.username){
       const {data: pinRow} = await sb.from("account_events").select("username").eq("gathering_id", result.gathering.id).eq("username", state.username).maybeSingle();
@@ -1625,12 +1641,23 @@
         <div class="modal-head"><h2>Which one are you?</h2></div>
         <div class="modal-body">
           <p style="color:var(--muted);font-size:13.5px;margin-top:0;">Pick your name so your balance shows up correctly.</p>
-          ${state.members.map(m => `
-            <button class="claim-member-btn" data-action="claim-member" data-id="${m.id}">
-              <span class="avatar" style="background:${colorFor(m.id)}">${initials(m.name)}</span>
-              <span>That's me — ${escapeHtml(m.name)}</span>
-            </button>
-          `).join("")}
+          ${state.members.map(m => {
+            const claimedByOther = m.claimedUsername && m.claimedUsername !== state.username;
+            if(claimedByOther){
+              return `
+                <div class="claim-member-btn taken" title="Already joined by another account">
+                  <span class="avatar" style="background:${colorFor(m.id)}">${initials(m.name)}</span>
+                  <span>${escapeHtml(m.name)} <span class="claim-member-taken-note">· already joined</span></span>
+                </div>
+              `;
+            }
+            return `
+              <button class="claim-member-btn" data-action="claim-member" data-id="${m.id}">
+                <span class="avatar" style="background:${colorFor(m.id)}">${initials(m.name)}</span>
+                <span>That's me — ${escapeHtml(m.name)}</span>
+              </button>
+            `;
+          }).join("")}
           <div class="field" style="margin-top:14px;">
             <label>Not listed? Add yourself</label>
             <input type="text" id="f-claim-new-name" placeholder="Your name">
@@ -2277,10 +2304,16 @@
       refreshHomeBalances();
     }
     else if(action === "claim-member"){
-      setIdentity(state.gathering.id, el.dataset.id);
-      state.myMemberId = el.dataset.id;
+      const targetId = el.dataset.id;
+      const target = state.members.find(m => m.id === targetId);
+      if(target && target.claimedUsername && target.claimedUsername !== state.username){
+        alert(`${target.name} has already been claimed by another account.`);
+        return;
+      }
+      setIdentity(state.gathering.id, targetId);
+      state.myMemberId = targetId;
       if(state.username){
-        await sb.from("members").update({claimed_username: state.username}).eq("id", el.dataset.id);
+        await sb.from("members").update({claimed_username: state.username}).eq("id", targetId);
         await pinEventToAccount(state.gathering.id);
         state.showClaimBanner = false;
         await loadMyEvents();
