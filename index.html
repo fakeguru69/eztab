@@ -310,6 +310,7 @@
   .expense-main{flex:1;min-width:0;}
   .expense-desc{font-weight:600;font-size:15px;margin-bottom:2px;}
   .expense-meta{font-size:12.5px;color:var(--muted);}
+  .expense-added-by{font-size:10.5px;color:var(--muted);opacity:0.75;margin-top:2px;}
   .expense-amt-col{text-align:right;flex:none;}
   .expense-amt{font-size:17px;}
   .expense-share{font-size:11.5px;color:var(--muted);margin-top:2px;}
@@ -677,7 +678,7 @@
   .home-recent-item{
     display:flex;align-items:center;justify-content:space-between;gap:10px;
     background:var(--paper);border:1px solid var(--border);border-radius:10px;
-    padding:14px 16px;cursor:pointer;
+    padding:14px 16px;cursor:pointer;min-height:60px;box-sizing:border-box;
   }
   .home-recent-item:hover{border-color:var(--brand-2);}
   .home-recent-name{
@@ -861,6 +862,7 @@
       taxGst: r.tax_gst,
       subtotal: r.subtotal,
       settlement: r.is_settlement,
+      addedByMemberId: r.added_by_member_id || null,
       expenseDate: r.expense_date,
       date: r.expense_date ? new Date(r.expense_date + "T00:00:00").getTime() : new Date(r.created_at).getTime()
     };
@@ -1366,7 +1368,7 @@
                       ${Math.abs(bal.amount) > 0.005 ? fmt(Math.abs(bal.amount), bal.currency) : fmt(0, bal.currency)}
                       <span class="home-recent-balance-sub">${bal.amount>0.005?"you're owed":bal.amount<-0.005?"you owe":"settled up"}</span>
                     </span>
-                  ` : ""}
+                  ` : `<span class="home-recent-balance-sub" style="text-align:right;">no expenses yet</span>`}
                   ${e.onDevice ? `<button class="group-tab-delete" data-action="forget-recent" data-id="${e.id}" title="Remove from this device">✕</button>` : ""}
                 </span>
               </div>
@@ -1504,19 +1506,23 @@
         return m ? escapeHtml(m.name) : "someone removed";
       }).join(", ");
       const showConverted = e.currency !== g.settlement_currency;
+      const adder = e.addedByMemberId ? memberById[e.addedByMemberId] : null;
+      const isOwner = !!(state.gathering.owner_username && state.username && state.gathering.owner_username === state.username);
+      const canDelete = !!(state.myMemberId && e.addedByMemberId && e.addedByMemberId === state.myMemberId) || isOwner;
       html += `
         <div class="expense-row ${isSettlement?'settlement':''}" ${isSettlement?'':`data-action="edit-expense" data-id="${e.id}"`}>
           <div class="expense-stamp" style="color:${colorFor(firstPayer ? firstPayer.id : (payerEntries[0] ? payerEntries[0].memberId : "x"))}">${firstPayer ? initials(firstPayer.name) : "?"}</div>
           <div class="expense-main">
             <div class="expense-desc">${escapeHtml(e.desc)}</div>
             <div class="expense-meta">${isSettlement ? "Settlement" : `Paid by ${payerNames || "someone removed"} · split with ${splitNames}`}</div>
+            ${adder ? `<div class="expense-added-by">added by ${escapeHtml(adder.name)}</div>` : ""}
           </div>
           <div class="expense-amt-col">
             <div class="expense-amt amt">${fmt(e.amount, e.currency)}</div>
             ${showConverted ? `<div class="expense-share">≈ ${fmt(e.settlementAmount)}</div>` : ""}
             ${shareText ? `<div class="expense-share">${shareText}</div>` : ""}
           </div>
-          <button class="expense-del" data-action="delete-expense" data-id="${e.id}" title="Delete">✕</button>
+          ${canDelete ? `<button class="expense-del" data-action="delete-expense" data-id="${e.id}" title="Delete">✕</button>` : ""}
         </div>
       `;
     });
@@ -1753,6 +1759,7 @@
   }
 
   function modalRenameGathering(data){
+    const isOwner = !!(state.gathering && state.gathering.owner_username && state.gathering.owner_username === state.username);
     return `
       <div class="modal">
         <div class="modal-head"><h2>Rename Taby Event</h2><button class="modal-close" data-action="close-modal">✕</button></div>
@@ -1761,6 +1768,13 @@
             <label>Taby Event name</label>
             <input type="text" id="f-gathering-rename" placeholder="Taby Event name" value="${escapeHtml(data.name||"")}">
           </div>
+          ${isOwner ? `
+            <div class="field" style="margin-top:22px;padding-top:18px;border-top:1px solid var(--border);">
+              <label style="color:var(--rust);">Danger zone</label>
+              <p style="color:var(--muted);font-size:12.5px;margin:0 0 10px;">Permanently deletes this Taby Event, every expense in it, and everyone's balances. This can't be undone.</p>
+              <button class="btn-secondary" data-action="delete-gathering" style="width:100%;color:var(--rust);border-color:var(--rust-soft);">Delete this Taby Event</button>
+            </div>
+          ` : ""}
         </div>
         <div class="modal-foot">
           <button class="btn-secondary" data-action="close-modal">Cancel</button>
@@ -2379,6 +2393,24 @@
       closeModal();
       render();
     }
+    else if(action === "delete-gathering"){
+      // Owner-only, destructive. Defense-in-depth check mirrors the UI gate
+      // in modalRenameGathering (button only renders for the owner there).
+      if(!state.gathering.owner_username || state.gathering.owner_username !== state.username){
+        alert("Only the person who created this Taby Event can delete it.");
+        return;
+      }
+      const name = state.gathering.name;
+      const confirmed = confirm(`Delete "${name}" for everyone? This permanently removes every expense and balance in it. This can't be undone.`);
+      if(!confirmed) return;
+      const {error} = await sb.from("gatherings").delete().eq("id", state.gathering.id);
+      if(error){
+        alert("Something went wrong deleting the Taby Event: " + (error.message || error.details || JSON.stringify(error)));
+        return;
+      }
+      removeRecent(state.gathering.id);
+      goHome();
+    }
     else if(action === "open-add-member"){
       state.modal = {type:"add-member"};
       renderModal();
@@ -2474,6 +2506,12 @@
       ev.stopPropagation();
       const id = el.dataset.id;
       const exp = state.expenses.find(x => x.id === id);
+      const isOwner = !!(state.gathering.owner_username && state.username && state.gathering.owner_username === state.username);
+      const canDelete = !!(exp && state.myMemberId && exp.addedByMemberId && exp.addedByMemberId === state.myMemberId) || isOwner;
+      if(!canDelete){
+        alert("Only the person who added this expense, or the Taby Event creator, can delete it.");
+        return;
+      }
       if(!confirm(`Delete "${exp ? exp.desc : "this expense"}"? This can't be undone once it syncs.`)) return;
       state.pendingDeleteIds[id] = true;
       render();
@@ -2499,7 +2537,8 @@
         description: `${memberById[from]?memberById[from].name:"?"} paid ${memberById[to]?memberById[to].name:"?"}`,
         amount, currency: state.gathering.settlement_currency, exchange_rate: 1,
         paid_by: [{memberId: from, amount}], split: [{memberId: to, amount}], split_type: "equal",
-        expense_date: new Date().toISOString().slice(0,10), is_settlement: true
+        expense_date: new Date().toISOString().slice(0,10), is_settlement: true,
+        added_by_member_id: state.myMemberId || null
       });
       await refreshData();
     }
@@ -2724,6 +2763,7 @@
     if(editId){
       await sb.from("expenses").update(row).eq("id", editId);
     } else {
+      row.added_by_member_id = state.myMemberId || null;
       await sb.from("expenses").insert(row);
     }
     closeModal();
