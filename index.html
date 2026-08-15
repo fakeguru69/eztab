@@ -332,7 +332,10 @@
     display:flex;align-items:center;justify-content:space-between;
     margin-bottom:10px;
   }
-  .balance-who{display:flex;align-items:center;gap:12px;font-weight:600;font-size:14.5px;}
+  .balance-who{
+    display:flex;align-items:center;gap:12px;font-weight:600;font-size:14.5px;
+    flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+  }
   .balance-amt.pos{color:var(--moss);}
   .balance-amt.neg{color:var(--rust);}
   .balance-sub{font-size:11.5px;color:var(--muted);font-weight:500;}
@@ -677,7 +680,10 @@
     padding:14px 16px;cursor:pointer;
   }
   .home-recent-item:hover{border-color:var(--brand-2);}
-  .home-recent-name{font-weight:600;font-size:15.5px;}
+  .home-recent-name{
+    font-weight:600;font-size:15.5px;
+    flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+  }
   .identity-card{
     background:var(--paper);border:1px solid var(--border);border-radius:14px;
     padding:18px 20px;margin-top:14px;
@@ -1115,13 +1121,14 @@
     state.expenses = result.expenses;
     addRecent({id: result.gathering.id, slug: result.gathering.slug, name: result.gathering.name});
     let identity = getIdentity(result.gathering.id);
-    // If we're signed in and our cached local identity now belongs to a
-    // DIFFERENT account (someone else reclaimed it since we last opened this
-    // event), the cache is stale — drop it so the claim flow re-triggers
-    // automatically instead of silently impersonating the wrong member.
+    // If we're signed in and our cached local identity no longer matches
+    // who the database says owns this member — either it was reclaimed by
+    // someone else, or the event's creator reset a wrong claim — the cache
+    // is stale. Drop it so the claim flow re-triggers automatically instead
+    // of silently impersonating the wrong member.
     if(identity && state.username){
       const cachedMember = result.members.find(m => m.id === identity);
-      if(cachedMember && cachedMember.claimedUsername && cachedMember.claimedUsername !== state.username){
+      if(cachedMember && cachedMember.claimedUsername !== state.username){
         localStorage.removeItem("gd_identity_"+result.gathering.id);
         identity = null;
       }
@@ -1530,7 +1537,7 @@
             <div class="avatar" style="background:${colorFor(m.id)}">${initials(m.name)}</div>
             ${escapeHtml(m.name)}
           </div>
-          <div style="text-align:right;">
+          <div style="text-align:right;flex:none;">
             <div class="balance-amt amt ${cls}">${amt===0?fmt(0):fmt(Math.abs(amt))}</div>
             <div class="balance-sub">${sub}</div>
           </div>
@@ -1764,6 +1771,19 @@
   }
 
   function modalRenameMember(data){
+    const isOwner = !!(state.gathering && state.gathering.owner_username && state.gathering.owner_username === state.username);
+    const claimBlock = data.claimedUsername
+      ? `
+        <div class="field">
+          <label>Account</label>
+          <p style="color:var(--muted);font-size:13px;margin:0 0 8px;">Claimed by <b style="color:var(--ink);">@${escapeHtml(data.claimedUsername)}</b></p>
+          ${isOwner
+            ? `<button class="btn-secondary" data-action="unclaim-member" data-id="${data.id}" style="width:100%;color:var(--rust);">Remove claim (wrong person claimed this)</button>`
+            : `<p style="color:var(--muted);font-size:12px;margin:0;">Only the Taby Event creator can remove a claim.</p>`
+          }
+        </div>
+      `
+      : "";
     return `
       <div class="modal">
         <div class="modal-head"><h2>Rename person</h2><button class="modal-close" data-action="close-modal">✕</button></div>
@@ -1772,6 +1792,7 @@
             <label>Name</label>
             <input type="text" id="f-member-rename" placeholder="Name" value="${escapeHtml(data.name||"")}">
           </div>
+          ${claimBlock}
         </div>
         <div class="modal-foot">
           <button class="btn-secondary" data-action="close-modal">Cancel</button>
@@ -2365,7 +2386,7 @@
     else if(action === "open-rename-member"){
       const member = state.members.find(m => m.id === el.dataset.id);
       if(!member) return;
-      state.modal = {type:"rename-member", data:{id: member.id, name: member.name}};
+      state.modal = {type:"rename-member", data:{id: member.id, name: member.name, claimedUsername: member.claimedUsername}};
       renderModal();
     }
     else if(action === "rename-member"){
@@ -2373,6 +2394,19 @@
       const name = nameEl.value.trim();
       if(!name){ nameEl.focus(); return; }
       await sb.from("members").update({name}).eq("id", el.dataset.id);
+      closeModal();
+      await refreshData();
+    }
+    else if(action === "unclaim-member"){
+      // Owner-only: undo a wrong claim so the member is free to be claimed
+      // again. Defense-in-depth check, mirrors the UI-level gate below.
+      if(!state.gathering.owner_username || state.gathering.owner_username !== state.username){
+        alert("Only the person who created this Taby Event can do that.");
+        return;
+      }
+      const member = state.members.find(m => m.id === el.dataset.id);
+      if(!confirm(`Remove ${member ? member.name : "this person"}'s claim? Whoever claimed them will be asked to pick again next time they open this Taby Event.`)) return;
+      await sb.from("members").update({claimed_username: null}).eq("id", el.dataset.id);
       closeModal();
       await refreshData();
     }
@@ -2440,6 +2474,7 @@
       ev.stopPropagation();
       const id = el.dataset.id;
       const exp = state.expenses.find(x => x.id === id);
+      if(!confirm(`Delete "${exp ? exp.desc : "this expense"}"? This can't be undone once it syncs.`)) return;
       state.pendingDeleteIds[id] = true;
       render();
       const timeoutId = setTimeout(async () => {
