@@ -2373,6 +2373,22 @@
         alert(`${target.name} has already been claimed by another account.`);
         return;
       }
+      // Guard against one account claiming a second person in the same
+      // event — the "taken" check above only blocks claiming someone
+      // ELSE'S member; it doesn't stop this account from claiming an
+      // additional one for itself. If we already own a claim here,
+      // re-adopt it instead of creating a duplicate.
+      if(state.username){
+        const existing = state.members.find(m => m.claimedUsername === state.username && m.id !== targetId);
+        if(existing){
+          setIdentity(state.gathering.id, existing.id);
+          state.myMemberId = existing.id;
+          alert(`You're already joined as ${existing.name} in this Taby Event — sticking with that.`);
+          closeModal();
+          await refreshData();
+          return;
+        }
+      }
       setIdentity(state.gathering.id, targetId);
       state.myMemberId = targetId;
       if(state.username){
@@ -2388,6 +2404,19 @@
       const nameEl = document.getElementById("f-claim-new-name");
       const name = nameEl.value.trim();
       if(!name){ nameEl.focus(); return; }
+      // Same guard as claim-member: don't let an account that already owns
+      // a member in this event add itself as a second one.
+      if(state.username){
+        const existing = state.members.find(m => m.claimedUsername === state.username);
+        if(existing){
+          setIdentity(state.gathering.id, existing.id);
+          state.myMemberId = existing.id;
+          alert(`You're already joined as ${existing.name} in this Taby Event — sticking with that.`);
+          closeModal();
+          await refreshData();
+          return;
+        }
+      }
       const insertRow = {gathering_id: state.gathering.id, name};
       if(state.username) insertRow.claimed_username = state.username;
       const {data} = await sb.from("members").insert(insertRow).select().single();
