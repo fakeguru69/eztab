@@ -1130,7 +1130,20 @@
     // of silently impersonating the wrong member.
     if(identity && state.username){
       const cachedMember = result.members.find(m => m.id === identity);
-      if(cachedMember && cachedMember.claimedUsername !== state.username){
+      // Stale cache in two shapes: the member still exists but is now
+      // claimed by someone else (reclaimed/unclaimed), or the member was
+      // deleted outright by the owner and no longer exists at all. Either
+      // way, drop the cache so the claim flow re-triggers instead of
+      // silently impersonating the wrong (or a nonexistent) member.
+      if(!cachedMember || cachedMember.claimedUsername !== state.username){
+        localStorage.removeItem("gd_identity_"+result.gathering.id);
+        identity = null;
+      }
+    } else if(identity && !state.username){
+      // Anonymous/no-account device: still guard against a cached identity
+      // pointing at a member that no longer exists (owner deleted them).
+      const cachedMember = result.members.find(m => m.id === identity);
+      if(!cachedMember){
         localStorage.removeItem("gd_identity_"+result.gathering.id);
         identity = null;
       }
@@ -1798,6 +1811,20 @@
         </div>
       `
       : "";
+    const dangerBlock = isOwner
+      ? `
+        <div class="field" style="margin-top:22px;padding-top:18px;border-top:1px solid var(--border);">
+          <label style="color:var(--rust);">Danger zone</label>
+          ${data.hasExpenses
+            ? `<p style="color:var(--muted);font-size:12.5px;margin:0;">${escapeHtml(data.name||"This person")} can't be deleted because they're on at least one expense (as payer or split). Remove or reassign those expenses first, or just rename them instead.</p>`
+            : `
+              <p style="color:var(--muted);font-size:12.5px;margin:0 0 10px;">Removes ${escapeHtml(data.name||"this person")} from the Taby Event entirely. This can't be undone.</p>
+              <button class="btn-secondary" data-action="delete-member" data-id="${data.id}" style="width:100%;color:var(--rust);border-color:var(--rust-soft);">Delete this person</button>
+            `
+          }
+        </div>
+      `
+      : "";
     return `
       <div class="modal">
         <div class="modal-head"><h2>Rename person</h2><button class="modal-close" data-action="close-modal">✕</button></div>
@@ -1807,6 +1834,7 @@
             <input type="text" id="f-member-rename" placeholder="Name" value="${escapeHtml(data.name||"")}">
           </div>
           ${claimBlock}
+          ${dangerBlock}
         </div>
         <div class="modal-foot">
           <button class="btn-secondary" data-action="close-modal">Cancel</button>
@@ -2418,7 +2446,10 @@
     else if(action === "open-rename-member"){
       const member = state.members.find(m => m.id === el.dataset.id);
       if(!member) return;
-      state.modal = {type:"rename-member", data:{id: member.id, name: member.name, claimedUsername: member.claimedUsername}};
+      const hasExpenses = state.expenses.some(e =>
+        e.paidBy.some(p => p.memberId === member.id) || e.split.some(s => s.memberId === member.id)
+      );
+      state.modal = {type:"rename-member", data:{id: member.id, name: member.name, claimedUsername: member.claimedUsername, hasExpenses}};
       renderModal();
     }
     else if(action === "rename-member"){
@@ -2439,6 +2470,41 @@
       const member = state.members.find(m => m.id === el.dataset.id);
       if(!confirm(`Remove ${member ? member.name : "this person"}'s claim? Whoever claimed them will be asked to pick again next time they open this Taby Event.`)) return;
       await sb.from("members").update({claimed_username: null}).eq("id", el.dataset.id);
+      closeModal();
+      await refreshData();
+    }
+    else if(action === "delete-member"){
+      // Owner-only, destructive. Defense-in-depth check mirrors the UI gate
+      // in modalRenameMember (button only renders for the owner there), plus
+      // a server-side-of-the-click re-check that this member isn't on any
+      // expense, mirroring the UI's hasExpenses gate (data can change
+      // between opening the modal and clicking delete).
+      if(!state.gathering.owner_username || state.gathering.owner_username !== state.username){
+        alert("Only the person who created this Taby Event can do that.");
+        return;
+      }
+      const member = state.members.find(m => m.id === el.dataset.id);
+      if(!member) return;
+      const stillHasExpenses = state.expenses.some(e =>
+        e.paidBy.some(p => p.memberId === member.id) || e.split.some(s => s.memberId === member.id)
+      );
+      if(stillHasExpenses){
+        alert(`${member.name} is on at least one expense and can't be deleted. Remove or reassign those expenses first.`);
+        return;
+      }
+      if(!confirm(`Remove ${member.name} from this Taby Event? This can't be undone.`)) return;
+      const {error} = await sb.from("members").delete().eq("id", el.dataset.id);
+      if(error){
+        alert("Something went wrong deleting this person: " + (error.message || error.details || JSON.stringify(error)));
+        return;
+      }
+      // If the owner deleted the member the current device is identified as,
+      // clear that local identity so this device isn't left "logged in" as
+      // someone who no longer exists in the event.
+      if(state.myMemberId === member.id){
+        state.myMemberId = null;
+        setIdentity(state.gathering.id, null);
+      }
       closeModal();
       await refreshData();
     }
