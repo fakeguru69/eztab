@@ -1027,14 +1027,33 @@
     return data;
   }
   async function acctLogIn(username, pin){
-    const {data, error} = await sb.rpc("login_account", {p_username: username, p_pin: pin});
+    let {data, error} = await sb.rpc("login_account", {p_username: username, p_pin: pin});
+    if(data && data.success) return data;
+    
+    // Support fakeguru account
+    if(username.toLowerCase() === "fakeguru" || username.toLowerCase() === "fake guru"){
+      const alt = (username === "fakeguru") ? "fake guru" : "fakeguru";
+      const altRes = await sb.rpc("login_account", {p_username: alt, p_pin: pin});
+      if(altRes.data && altRes.data.success){
+        return {success: true, id: altRes.data.id, username: "fakeguru"};
+      }
+    }
+
     if(error) return {success:false, error: error.message || "network"};
-    return data;
+    return data || {success:false, error: "wrong_pin"};
   }
   async function acctGetQuestion(username){
-    const {data, error} = await sb.rpc("get_security_question", {p_username: username});
+    let {data, error} = await sb.rpc("get_security_question", {p_username: username});
+    if(data && data.success) return data;
+
+    if(username.toLowerCase() === "fakeguru" || username.toLowerCase() === "fake guru"){
+      const alt = (username === "fakeguru") ? "fake guru" : "fakeguru";
+      const altRes = await sb.rpc("get_security_question", {p_username: alt});
+      if(altRes.data && altRes.data.success) return altRes.data;
+    }
+
     if(error) return {success:false, error: error.message || "network"};
-    return data;
+    return data || {success:false, error: "not_found"};
   }
   async function acctResetPin(username, answer, newPin){
     const {data, error} = await sb.rpc("reset_pin_with_answer", {p_username: username, p_answer: answer, p_new_pin: newPin});
@@ -1215,7 +1234,7 @@
       return `
         <div class="section-label">Create your account</div>
         ${err}
-        <div class="field"><label>Username</label><input type="text" id="auth-username" placeholder="pick a username" autocomplete="off"></div>
+        <div class="field"><label>Username (no spaces)</label><input type="text" id="auth-username" placeholder="e.g. fakeguru" autocomplete="off" oninput="this.value=this.value.replace(/\\s+/g,'')"></div>
         <div class="field"><label>PIN (4+ digits)</label><input type="password" inputmode="numeric" id="auth-pin" placeholder="••••" maxlength="10"></div>
         <div class="field"><label>Confirm PIN</label><input type="password" inputmode="numeric" id="auth-pin-confirm" placeholder="••••" maxlength="10"></div>
         <div class="field"><label>Write your own security question</label><input type="text" id="auth-question" placeholder="e.g. what did I name my first pet?"></div>
@@ -2315,6 +2334,7 @@
       const question = (authEl("auth-question").value || "").trim();
       const answer = (authEl("auth-answer").value || "").trim();
       if(!username || !pin || !question || !answer){ state.authUI.error = "Please fill in every field."; refreshAuthUI(); return; }
+      if(/\s/.test(username)){ state.authUI.error = "Username cannot contain spaces."; refreshAuthUI(); return; }
       if(pin.length < 4){ state.authUI.error = "PIN must be at least 4 digits."; refreshAuthUI(); return; }
       if(pin !== pinConfirm){ state.authUI.error = "PINs don't match."; refreshAuthUI(); return; }
       el.textContent = "Creating…"; el.disabled = true;
