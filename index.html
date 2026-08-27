@@ -1002,34 +1002,6 @@
   function setSessionUsername(u){ localStorage.setItem("gd_session_username", u); }
   function clearSessionUsername(){ localStorage.removeItem("gd_session_username"); }
 
-  function getUsernameVariants(u){
-    if(!u) return [];
-    const trimmed = String(u).trim();
-    const set = new Set();
-    set.add(trimmed);
-    set.add(trimmed.toLowerCase());
-    
-    const noSpace = trimmed.replace(/\s+/g, "");
-    set.add(noSpace);
-    set.add(noSpace.toLowerCase());
-
-    set.add(trimmed.replace(/\s+/g, "_"));
-    set.add(trimmed.replace(/\s+/g, "-"));
-    set.add(trimmed.replace(/[_-]/g, " "));
-    set.add(trimmed.replace(/[_-]/g, ""));
-
-    if(!trimmed.includes(" ")){
-      const camel = trimmed.replace(/([a-z])([A-Z])/g, "$1 $2");
-      set.add(camel);
-      set.add(camel.toLowerCase());
-      if(/fakeguru/i.test(trimmed)){
-        set.add(trimmed.replace(/fakeguru/i, "fake guru"));
-        set.add(trimmed.replace(/fakeguru/i, "Fake Guru"));
-      }
-    }
-    return Array.from(set).filter(Boolean);
-  }
-
   async function initUsername(){
     state.username = getSessionUsername();
     if(state.username) await loadMyEvents();
@@ -1037,21 +1009,12 @@
 
   async function loadMyEvents(){
     if(!state.username) { state.myEvents = []; return; }
-    const variants = getUsernameVariants(state.username);
     const {data, error} = await sb.from("account_events")
       .select("gathering_id, created_at, gatherings(*)")
-      .in("username", variants)
+      .eq("username", state.username)
       .order("created_at", {ascending:false});
     if(error){ console.error("loadMyEvents failed:", error); state.myEvents = []; return; }
-    const seen = new Set();
-    const list = [];
-    (data||[]).forEach(r => {
-      if(r && r.gatherings && !seen.has(r.gatherings.id)){
-        seen.add(r.gatherings.id);
-        list.push(r.gatherings);
-      }
-    });
-    state.myEvents = list;
+    state.myEvents = (data||[]).map(r => r.gatherings).filter(Boolean);
   }
   async function pinEventToAccount(gatheringId){
     if(!state.username) return;
@@ -1064,52 +1027,19 @@
     return data;
   }
   async function acctLogIn(username, pin){
-    const variants = getUsernameVariants(username);
-    let lastError = null;
-    for(const variant of variants){
-      const {data, error} = await sb.rpc("login_account", {p_username: variant, p_pin: pin});
-      if(data && data.success){
-        return data;
-      }
-      if(data && !data.success){
-        lastError = data.error;
-      } else if(error){
-        lastError = error.message || error;
-      }
-    }
-    return {success: false, error: lastError || "wrong_pin"};
+    const {data, error} = await sb.rpc("login_account", {p_username: username, p_pin: pin});
+    if(error) return {success:false, error: error.message || "network"};
+    return data;
   }
   async function acctGetQuestion(username){
-    const variants = getUsernameVariants(username);
-    let lastError = null;
-    for(const variant of variants){
-      const {data, error} = await sb.rpc("get_security_question", {p_username: variant});
-      if(data && data.success){
-        return data;
-      }
-      if(data && !data.success){
-        lastError = data.error;
-      } else if(error){
-        lastError = error.message || error;
-      }
-    }
-    return {success: false, error: lastError || "not_found"};
+    const {data, error} = await sb.rpc("get_security_question", {p_username: username});
+    if(error) return {success:false, error: error.message || "network"};
+    return data;
   }
   async function acctResetPin(username, answer, newPin){
-    const variants = getUsernameVariants(username);
-    let lastError = null;
-    for(const variant of variants){
-      const {data, error} = await sb.rpc("reset_pin_with_answer", {p_username: variant, p_answer: answer, p_new_pin: newPin});
-      if(data && data.success){
-        return data;
-      }
-      if(data && !data.success){
-        lastError = data.error;
-      } else if(error){
-        lastError = error.message || error;
-      }
-    }
-    return {success: false, error: lastError || "wrong_answer"};
+    const {data, error} = await sb.rpc("reset_pin_with_answer", {p_username: username, p_answer: answer, p_new_pin: newPin});
+    if(error) return {success:false, error: error.message || "network"};
+    return data;
   }
   function acctErrorText(err){
     if(!err) return "Something went wrong. Please try again.";
