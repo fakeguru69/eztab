@@ -4,15 +4,28 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>EZTaby</title>
-<link rel="manifest" href="/manifest.json">
+<link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#8A63FF">
+<meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="EZTab">
-<link rel="apple-touch-icon" href="/apple-touch-icon.png">
-<link rel="icon" type="image/svg+xml" href="/icon.svg">
-<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
-<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
+<link rel="icon" type="image/svg+xml" href="icon.svg">
+<link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png">
+<script>
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', function() {
+      navigator.serviceWorker.register('sw.js').then(function(reg) {
+        console.log('EZTab Service Worker registered:', reg.scope);
+      }).catch(function(err) {
+        console.warn('Service worker registration failed:', err);
+      });
+    });
+  }
+</script>
 <script>
   // Decodes the redirect that 404.html performs for pretty URLs like /eztab/bali2026,
   // restoring the clean path in the address bar before the app boots.
@@ -833,10 +846,23 @@
     myEvents: [],
     authUI: {mode:"signin", error:null, question:null, forgotUsername:null, onSuccessAction:"home"},
     showAuthOnHome: false,
+    canInstall: false,
     pendingDeleteIds: {}, // expense ids optimistically hidden while an undo window is open
     homeBalances: {} // {gatheringId: {amount, currency}} — "my" net balance per event on the home list
   };
   const pendingDeleteTimers = {}; // id -> {timeoutId, expense}
+
+  window.addEventListener("beforeinstallprompt", (e) => {
+    e.preventDefault();
+    window.deferredInstallPrompt = e;
+    state.canInstall = true;
+    if(state.loaded) render();
+  });
+  window.addEventListener("appinstalled", () => {
+    window.deferredInstallPrompt = null;
+    state.canInstall = false;
+    if(state.loaded) render();
+  });
 
   function visibleExpenses(){
     return state.expenses.filter(e => !state.pendingDeleteIds[e.id]);
@@ -1344,9 +1370,12 @@
   function renderHome(){
     if(!state.username){
       return `
-        <div class="home-wrap" style="width:100%;text-align:center;padding-top:80px;">
-          <h1 class="brand-mark" style="font-size:38px;margin:0;">EZTaby</h1>
-          <div class="brand-tagline" style="margin:2px 0 30px;">the fuss-free way to keep track of multi-party spending</div>
+        <div class="home-wrap" style="width:100%;text-align:center;padding-top:60px;">
+          <div style="display:inline-flex;align-items:center;justify-content:center;gap:12px;margin-bottom:8px;">
+            <img src="icon.svg" alt="EZTab" style="width:48px;height:48px;border-radius:12px;box-shadow:0 4px 16px rgba(138,99,255,0.4);">
+            <h1 class="brand-mark" style="font-size:38px;margin:0;">EZTaby</h1>
+          </div>
+          <div class="brand-tagline" style="margin:2px 0 24px;">the fuss-free way to keep track of multi-party spending</div>
           ${state.showAuthOnHome ? `
             <div class="account-box" style="text-align:left;max-width:380px;margin:0 auto;">${renderAuthForm()}</div>
           ` : `
@@ -1359,6 +1388,12 @@
               </div>
             </div>
           `}
+          <div style="margin-top:28px;">
+            <button class="btn-secondary" data-action="install-pwa" style="font-size:12.5px;padding:8px 16px;border-radius:20px;display:inline-flex;align-items:center;gap:6px;">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              <span>Install EZTab on Chrome</span>
+            </button>
+          </div>
         </div>
       `;
     }
@@ -1384,7 +1419,15 @@
 
     return `
       <div class="home-wrap" style="width:100%;">
-        <span class="brand-mark" style="font-size:15px;opacity:0.7;">EZTaby</span>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+          <div style="display:flex;align-items:center;gap:8px;">
+            <img src="icon.svg" alt="EZTab" style="width:24px;height:24px;border-radius:6px;">
+            <span class="brand-mark" style="font-size:16px;">EZTaby</span>
+          </div>
+          <button class="share-btn-sm" data-action="install-pwa" style="font-size:12px;padding:5px 12px;border-radius:16px;">
+            Install App
+          </button>
+        </div>
         <div class="identity-card">
           <div class="home-topline">
             <h1 class="home-username">@${escapeHtml(state.username)}</h1>
@@ -1429,9 +1472,12 @@
     return `
       <div class="brand">
         <div class="brand-top">
-          <div class="brand-text">
-            <div class="brand-mark">EZTaby</div>
-            <div class="brand-tagline">a fake guru app</div>
+          <div style="display:flex;align-items:center;gap:10px;">
+            <img src="icon.svg" alt="EZTab" style="width:32px;height:32px;border-radius:8px;box-shadow:0 2px 8px rgba(138,99,255,0.35);">
+            <div class="brand-text">
+              <div class="brand-mark">EZTaby</div>
+              <div class="brand-tagline">a fake guru app</div>
+            </div>
           </div>
         </div>
         ${mine !== null ? `
@@ -2314,6 +2360,21 @@
         try{ await navigator.share({title: name, text: shareText, url: link}); }catch(e){}
       } else {
         try{ await navigator.clipboard.writeText(`${shareText}: ${link}`); alert("Message copied — paste it into WhatsApp, email, or a text message."); }catch(e){ alert(`${shareText}: ${link}`); }
+      }
+    }
+    else if(action === "install-pwa"){
+      if(window.deferredInstallPrompt){
+        window.deferredInstallPrompt.prompt();
+        window.deferredInstallPrompt.userChoice.then((choiceResult) => {
+          if(choiceResult && choiceResult.outcome === "accepted"){
+            console.log("PWA installation accepted");
+          }
+          window.deferredInstallPrompt = null;
+          state.canInstall = false;
+          render();
+        });
+      } else {
+        alert("To install EZTab:\n\n• On Chrome (Desktop): Click the install icon (⊕) in the right side of the address bar, or click '...' menu > 'Install EZTab'.\n• On Chrome (Android): Tap the menu (⋮) > 'Install app' or 'Add to Home screen'.\n• On iOS (Safari): Tap the Share button (⎋) > 'Add to Home Screen'.");
       }
     }
     else if(action === "auth-mode"){
