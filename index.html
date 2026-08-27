@@ -1002,6 +1002,34 @@
   function setSessionUsername(u){ localStorage.setItem("gd_session_username", u); }
   function clearSessionUsername(){ localStorage.removeItem("gd_session_username"); }
 
+  function getUsernameVariants(u){
+    if(!u) return [];
+    const trimmed = String(u).trim();
+    const set = new Set();
+    set.add(trimmed);
+    set.add(trimmed.toLowerCase());
+    
+    const noSpace = trimmed.replace(/\s+/g, "");
+    set.add(noSpace);
+    set.add(noSpace.toLowerCase());
+
+    set.add(trimmed.replace(/\s+/g, "_"));
+    set.add(trimmed.replace(/\s+/g, "-"));
+    set.add(trimmed.replace(/[_-]/g, " "));
+    set.add(trimmed.replace(/[_-]/g, ""));
+
+    if(!trimmed.includes(" ")){
+      const camel = trimmed.replace(/([a-z])([A-Z])/g, "$1 $2");
+      set.add(camel);
+      set.add(camel.toLowerCase());
+      if(/fakeguru/i.test(trimmed)){
+        set.add(trimmed.replace(/fakeguru/i, "fake guru"));
+        set.add(trimmed.replace(/fakeguru/i, "Fake Guru"));
+      }
+    }
+    return Array.from(set).filter(Boolean);
+  }
+
   async function initUsername(){
     state.username = getSessionUsername();
     if(state.username) await loadMyEvents();
@@ -1009,12 +1037,21 @@
 
   async function loadMyEvents(){
     if(!state.username) { state.myEvents = []; return; }
+    const variants = getUsernameVariants(state.username);
     const {data, error} = await sb.from("account_events")
       .select("gathering_id, created_at, gatherings(*)")
-      .eq("username", state.username)
+      .in("username", variants)
       .order("created_at", {ascending:false});
     if(error){ console.error("loadMyEvents failed:", error); state.myEvents = []; return; }
-    state.myEvents = (data||[]).map(r => r.gatherings).filter(Boolean);
+    const seen = new Set();
+    const list = [];
+    (data||[]).forEach(r => {
+      if(r && r.gatherings && !seen.has(r.gatherings.id)){
+        seen.add(r.gatherings.id);
+        list.push(r.gatherings);
+      }
+    });
+    state.myEvents = list;
   }
   async function pinEventToAccount(gatheringId){
     if(!state.username) return;
@@ -1027,68 +1064,52 @@
     return data;
   }
   async function acctLogIn(username, pin){
-    let {data, error} = await sb.rpc("login_account", {p_username: username, p_pin: pin});
-    if(data && data.success) return data;
-    
-    // If login failed and username has spaces (e.g. "fake guru" -> "fakeguru"), try without spaces
-    if((!data || !data.success) && username.includes(" ")) {
-      const stripped = username.replace(/\s+/g, "");
-      const resStripped = await sb.rpc("login_account", {p_username: stripped, p_pin: pin});
-      if(resStripped.data && resStripped.data.success) {
-        return resStripped.data;
+    const variants = getUsernameVariants(username);
+    let lastError = null;
+    for(const variant of variants){
+      const {data, error} = await sb.rpc("login_account", {p_username: variant, p_pin: pin});
+      if(data && data.success){
+        return data;
+      }
+      if(data && !data.success){
+        lastError = data.error;
+      } else if(error){
+        lastError = error.message || error;
       }
     }
-    
-    // If login failed and username has no spaces, also try lowercase if different
-    if((!data || !data.success) && !username.includes(" ")) {
-      const lower = username.toLowerCase();
-      if(lower !== username) {
-        const resLower = await sb.rpc("login_account", {p_username: lower, p_pin: pin});
-        if(resLower.data && resLower.data.success) {
-          return resLower.data;
-        }
-      }
-    }
-
-    if(error) return {success:false, error: error.message || "network"};
-    return data || {success:false, error:"network"};
+    return {success: false, error: lastError || "wrong_pin"};
   }
   async function acctGetQuestion(username){
-    let {data, error} = await sb.rpc("get_security_question", {p_username: username});
-    if(data && data.success) return data;
-
-    if((!data || !data.success) && username.includes(" ")) {
-      const stripped = username.replace(/\s+/g, "");
-      const resStripped = await sb.rpc("get_security_question", {p_username: stripped});
-      if(resStripped.data && resStripped.data.success) {
-        return resStripped.data;
+    const variants = getUsernameVariants(username);
+    let lastError = null;
+    for(const variant of variants){
+      const {data, error} = await sb.rpc("get_security_question", {p_username: variant});
+      if(data && data.success){
+        return data;
+      }
+      if(data && !data.success){
+        lastError = data.error;
+      } else if(error){
+        lastError = error.message || error;
       }
     }
-    if((!data || !data.success) && !username.includes(" ")) {
-      const lower = username.toLowerCase();
-      if(lower !== username) {
-        const resLower = await sb.rpc("get_security_question", {p_username: lower});
-        if(resLower.data && resLower.data.success) {
-          return resLower.data;
-        }
-      }
-    }
-    if(error) return {success:false, error: error.message || "network"};
-    return data || {success:false, error:"network"};
+    return {success: false, error: lastError || "not_found"};
   }
   async function acctResetPin(username, answer, newPin){
-    let {data, error} = await sb.rpc("reset_pin_with_answer", {p_username: username, p_answer: answer, p_new_pin: newPin});
-    if(data && data.success) return data;
-
-    if((!data || !data.success) && username.includes(" ")) {
-      const stripped = username.replace(/\s+/g, "");
-      const resStripped = await sb.rpc("reset_pin_with_answer", {p_username: stripped, p_answer: answer, p_new_pin: newPin});
-      if(resStripped.data && resStripped.data.success) {
-        return resStripped.data;
+    const variants = getUsernameVariants(username);
+    let lastError = null;
+    for(const variant of variants){
+      const {data, error} = await sb.rpc("reset_pin_with_answer", {p_username: variant, p_answer: answer, p_new_pin: newPin});
+      if(data && data.success){
+        return data;
+      }
+      if(data && !data.success){
+        lastError = data.error;
+      } else if(error){
+        lastError = error.message || error;
       }
     }
-    if(error) return {success:false, error: error.message || "network"};
-    return data || {success:false, error:"network"};
+    return {success: false, error: lastError || "wrong_answer"};
   }
   function acctErrorText(err){
     if(!err) return "Something went wrong. Please try again.";
