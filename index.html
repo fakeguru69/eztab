@@ -1023,32 +1023,86 @@
 
   async function acctSignUp(username, pin, question, answer){
     const {data, error} = await sb.rpc("create_account", {p_username: username, p_pin: pin, p_question: question, p_answer: answer});
-    if(error) return {success:false, error:"network"};
+    if(error) return {success:false, error: error.message || "network"};
     return data;
   }
   async function acctLogIn(username, pin){
-    const {data, error} = await sb.rpc("login_account", {p_username: username, p_pin: pin});
-    if(error) return {success:false, error:"network"};
-    return data;
+    let {data, error} = await sb.rpc("login_account", {p_username: username, p_pin: pin});
+    if(data && data.success) return data;
+    
+    // If login failed and username has spaces (e.g. "fake guru" -> "fakeguru"), try without spaces
+    if((!data || !data.success) && username.includes(" ")) {
+      const stripped = username.replace(/\s+/g, "");
+      const resStripped = await sb.rpc("login_account", {p_username: stripped, p_pin: pin});
+      if(resStripped.data && resStripped.data.success) {
+        return resStripped.data;
+      }
+    }
+    
+    // If login failed and username has no spaces, also try lowercase if different
+    if((!data || !data.success) && !username.includes(" ")) {
+      const lower = username.toLowerCase();
+      if(lower !== username) {
+        const resLower = await sb.rpc("login_account", {p_username: lower, p_pin: pin});
+        if(resLower.data && resLower.data.success) {
+          return resLower.data;
+        }
+      }
+    }
+
+    if(error) return {success:false, error: error.message || "network"};
+    return data || {success:false, error:"network"};
   }
   async function acctGetQuestion(username){
-    const {data, error} = await sb.rpc("get_security_question", {p_username: username});
-    if(error) return {success:false, error:"network"};
-    return data;
+    let {data, error} = await sb.rpc("get_security_question", {p_username: username});
+    if(data && data.success) return data;
+
+    if((!data || !data.success) && username.includes(" ")) {
+      const stripped = username.replace(/\s+/g, "");
+      const resStripped = await sb.rpc("get_security_question", {p_username: stripped});
+      if(resStripped.data && resStripped.data.success) {
+        return resStripped.data;
+      }
+    }
+    if((!data || !data.success) && !username.includes(" ")) {
+      const lower = username.toLowerCase();
+      if(lower !== username) {
+        const resLower = await sb.rpc("get_security_question", {p_username: lower});
+        if(resLower.data && resLower.data.success) {
+          return resLower.data;
+        }
+      }
+    }
+    if(error) return {success:false, error: error.message || "network"};
+    return data || {success:false, error:"network"};
   }
   async function acctResetPin(username, answer, newPin){
-    const {data, error} = await sb.rpc("reset_pin_with_answer", {p_username: username, p_answer: answer, p_new_pin: newPin});
-    if(error) return {success:false, error:"network"};
-    return data;
+    let {data, error} = await sb.rpc("reset_pin_with_answer", {p_username: username, p_answer: answer, p_new_pin: newPin});
+    if(data && data.success) return data;
+
+    if((!data || !data.success) && username.includes(" ")) {
+      const stripped = username.replace(/\s+/g, "");
+      const resStripped = await sb.rpc("reset_pin_with_answer", {p_username: stripped, p_answer: answer, p_new_pin: newPin});
+      if(resStripped.data && resStripped.data.success) {
+        return resStripped.data;
+      }
+    }
+    if(error) return {success:false, error: error.message || "network"};
+    return data || {success:false, error:"network"};
   }
   function acctErrorText(err){
-    if(err === "not_found") return "No account with that username.";
-    if(err === "wrong_pin") return "Wrong PIN.";
-    if(err === "wrong_answer") return "That answer doesn't match.";
-    if(err === "username_taken") return "That username is already taken.";
-    if(err === "invalid_pin") return "PIN must be at least 4 digits.";
-    if(err === "invalid_input") return "Please fill in every field.";
-    if(err === "locked") return "Too many attempts — please wait a few minutes and try again.";
+    if(!err) return "Something went wrong. Please try again.";
+    if(typeof err === "object") err = err.message || err.details || JSON.stringify(err);
+    err = String(err).trim();
+    if(err === "not_found" || err.toLowerCase().includes("no account")) return "No account with that username.";
+    if(err === "wrong_pin" || err.toLowerCase().includes("incorrect username or pin") || err.toLowerCase().includes("wrong pin")) return "Incorrect username or PIN.";
+    if(err === "wrong_answer" || err.toLowerCase().includes("does not match") || err.toLowerCase().includes("doesn't match")) return "That answer doesn't match.";
+    if(err === "username_taken" || err.toLowerCase().includes("already taken")) return "That username is already taken.";
+    if(err === "invalid_pin" || err.toLowerCase().includes("pin must be")) return "PIN must be at least 4 digits.";
+    if(err === "invalid_input" || err.toLowerCase().includes("fill in")) return "Please fill in every field.";
+    if(err === "locked" || err.toLowerCase().includes("too many attempts")) return "Too many attempts — please wait a few minutes and try again.";
+    if(err === "network" || err.toLowerCase().includes("fetch")) return "Network error. Please check your connection and try again.";
+    if(err.length > 0 && !err.includes("{") && !err.includes("JSON")) return err;
     return "Something went wrong. Please try again.";
   }
 
