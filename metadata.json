@@ -1,0 +1,8 @@
+{
+  "name": "EZTaby",
+  "description": "A group expense sharing and bill splitting application.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

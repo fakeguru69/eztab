@@ -971,25 +971,18 @@
 
   // ============== ROUTING ==============
   function basePath(){
-    // The folder index.html lives in, e.g. "/eztab/" — works whether the
-    // current URL is the bare folder, "/index.html", or "/eztab/somslug".
     let p = location.pathname;
     if(p.toLowerCase().endsWith("/index.html")) p = p.slice(0, -"index.html".length);
-    // If we're on an event path like /eztab/bali2026, walk back up to the
-    // first segment (the repo name) — that's our stable base for building links.
-    const parts = p.split("/").filter(Boolean);
-    if(!p.endsWith("/") && parts.length){
-      return "/" + parts.slice(0, 1).join("/") + "/";
-    }
-    if(!p.endsWith("/")) p += "/";
-    return p;
+    if(p.startsWith("/eztab/") || p === "/eztab") return "/eztab/";
+    return "/";
   }
   function currentSlug(){
     const base = basePath();
     let path = location.pathname;
     if(path.toLowerCase().endsWith("/index.html")) path = path.slice(0, -"index.html".length);
     if(path.startsWith(base) && path.length > base.length){
-      return decodeURIComponent(path.slice(base.length).replace(/\/$/, "")) || null;
+      const segment = path.slice(base.length).split("/")[0];
+      return decodeURIComponent(segment) || null;
     }
     // Backward-compat: links shared before pretty URLs used ?g=slug
     return new URLSearchParams(location.search).get("g");
