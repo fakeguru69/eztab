@@ -4,31 +4,28 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>EZTaby</title>
-<script>
-  // Ensure relative assets and PWA icons resolve to the app root (e.g. /eztab/ on GitHub Pages)
-  (function() {
-    var baseEl = document.createElement('base');
-    var isGh = window.location.pathname.startsWith('/eztab');
-    baseEl.href = isGh ? (window.location.origin + '/eztab/') : (window.location.origin + '/');
-    document.head.appendChild(baseEl);
-  })();
-</script>
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#8A63FF">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="EZTab">
-<link rel="apple-touch-icon" href="apple-touch-icon.png">
-<link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
-<link rel="icon" type="image/svg+xml" href="icon.svg">
+<meta name="apple-mobile-web-app-title" content="EZTaby">
+<meta name="application-name" content="EZTaby">
+<link rel="shortcut icon" href="favicon.ico">
+<link rel="icon" type="image/x-icon" href="favicon.ico">
 <link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png">
 <link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+<link rel="icon" type="image/png" sizes="512x512" href="icon-512.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
+<link rel="apple-touch-icon-precomposed" href="apple-touch-icon.png">
+<link rel="icon" type="image/svg+xml" href="icon.svg">
 <script>
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', function() {
       navigator.serviceWorker.register('sw.js').then(function(reg) {
-        console.log('EZTab Service Worker registered:', reg.scope);
+        console.log('EZTaby Service Worker registered:', reg.scope);
       }).catch(function(err) {
         console.warn('Service worker registration failed:', err);
       });
