@@ -4,6 +4,15 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>EZTaby</title>
+<script>
+  // Ensure relative assets and PWA icons resolve to the app root (e.g. /eztab/ on GitHub Pages)
+  (function() {
+    var baseEl = document.createElement('base');
+    var isGh = window.location.pathname.startsWith('/eztab');
+    baseEl.href = isGh ? (window.location.origin + '/eztab/') : (window.location.origin + '/');
+    document.head.appendChild(baseEl);
+  })();
+</script>
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#8A63FF">
 <meta name="mobile-web-app-capable" content="yes">
@@ -1370,12 +1379,9 @@
   function renderHome(){
     if(!state.username){
       return `
-        <div class="home-wrap" style="width:100%;text-align:center;padding-top:60px;">
-          <div style="display:inline-flex;align-items:center;justify-content:center;gap:12px;margin-bottom:8px;">
-            <img src="icon.svg" alt="EZTab" style="width:48px;height:48px;border-radius:12px;box-shadow:0 4px 16px rgba(138,99,255,0.4);">
-            <h1 class="brand-mark" style="font-size:38px;margin:0;">EZTaby</h1>
-          </div>
-          <div class="brand-tagline" style="margin:2px 0 24px;">the fuss-free way to keep track of multi-party spending</div>
+        <div class="home-wrap" style="width:100%;text-align:center;padding-top:80px;">
+          <h1 class="brand-mark" style="font-size:38px;margin:0;">EZTaby</h1>
+          <div class="brand-tagline" style="margin:2px 0 30px;">the fuss-free way to keep track of multi-party spending</div>
           ${state.showAuthOnHome ? `
             <div class="account-box" style="text-align:left;max-width:380px;margin:0 auto;">${renderAuthForm()}</div>
           ` : `
@@ -1388,12 +1394,6 @@
               </div>
             </div>
           `}
-          <div style="margin-top:28px;">
-            <button class="btn-secondary" data-action="install-pwa" style="font-size:12.5px;padding:8px 16px;border-radius:20px;display:inline-flex;align-items:center;gap:6px;">
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-              <span>Install EZTab on Chrome</span>
-            </button>
-          </div>
         </div>
       `;
     }
@@ -1419,15 +1419,7 @@
 
     return `
       <div class="home-wrap" style="width:100%;">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
-          <div style="display:flex;align-items:center;gap:8px;">
-            <img src="icon.svg" alt="EZTab" style="width:24px;height:24px;border-radius:6px;">
-            <span class="brand-mark" style="font-size:16px;">EZTaby</span>
-          </div>
-          <button class="share-btn-sm" data-action="install-pwa" style="font-size:12px;padding:5px 12px;border-radius:16px;">
-            Install App
-          </button>
-        </div>
+        <span class="brand-mark" style="font-size:15px;opacity:0.7;">EZTaby</span>
         <div class="identity-card">
           <div class="home-topline">
             <h1 class="home-username">@${escapeHtml(state.username)}</h1>
@@ -1472,12 +1464,9 @@
     return `
       <div class="brand">
         <div class="brand-top">
-          <div style="display:flex;align-items:center;gap:10px;">
-            <img src="icon.svg" alt="EZTab" style="width:32px;height:32px;border-radius:8px;box-shadow:0 2px 8px rgba(138,99,255,0.35);">
-            <div class="brand-text">
-              <div class="brand-mark">EZTaby</div>
-              <div class="brand-tagline">a fake guru app</div>
-            </div>
+          <div class="brand-text">
+            <div class="brand-mark">EZTaby</div>
+            <div class="brand-tagline">a fake guru app</div>
           </div>
         </div>
         ${mine !== null ? `
