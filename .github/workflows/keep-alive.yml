@@ -5,18 +5,30 @@ on:
     - cron: '0 3 */3 * *'
   workflow_dispatch:
 
+permissions:
+  actions: write
+
 jobs:
   ping:
     runs-on: ubuntu-latest
     steps:
       - name: Ping MaxWord Supabase project
         run: |
-          curl -s -o /dev/null -w "MaxWord ping: %{http_code}\n" \
+          curl -sf -o /dev/null -w "MaxWord ping: %{http_code}\n" \
             "https://dowhlyoufjmespcwyrke.supabase.co/rest/v1/_keepalive?select=id&limit=1" \
             -H "apikey: ${{ secrets.MAXWORD_SUPABASE_KEY }}"
 
       - name: Ping EZTaby (splitapp) Supabase project
         run: |
-          curl -s -o /dev/null -w "EZTaby ping: %{http_code}\n" \
+          curl -sf -o /dev/null -w "EZTaby ping: %{http_code}\n" \
             "https://hiypdbbywxrwqgzpmgux.supabase.co/rest/v1/_keepalive?select=id&limit=1" \
             -H "apikey: ${{ secrets.EZTABY_SUPABASE_KEY }}"
+
+      # GitHub switches off scheduled workflows after 60 days without repo
+      # commits. Re-enabling this workflow resets that 60-day timer, so the
+      # keep-alive keeps itself alive.
+      - name: Reset GitHub's 60-day inactivity timer
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow enable "Supabase Keep-Alive" --repo "${{ github.repository }}"
