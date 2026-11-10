@@ -20,6 +20,17 @@ jobs:
             "https://hiypdbbywxrwqgzpmgux.supabase.co/rest/v1/_keepalive?select=id&limit=1" \
             -H "apikey: ${{ secrets.EZTABY_SUPABASE_KEY }}"
 
+  # Publishable (anon) key: public by design, and RLS only lets it read the
+  # tiny _keepalive table.
+  ping-mythios:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping Mythios Supabase project
+        run: |
+          curl -sf -o /dev/null -w "Mythios ping: %{http_code}\n" \
+            "https://toqeuurdsyeifhpecagr.supabase.co/rest/v1/_keepalive?select=id&limit=1" \
+            -H "apikey: sb_publishable_ICXEO9nRuilWdVF1WDSRMA_SVng5ADV"
+
   # MaxWord is paused (free plan = 2 active projects). Pinging a paused
   # project fails and can't wake it. When MaxWord is restored, add back a job
   # like ping-eztaby using https://dowhlyoufjmespcwyrke.supabase.co and the
