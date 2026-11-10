@@ -8,8 +8,19 @@ on:
 permissions:
   actions: write
 
+# Each project is pinged in its own job, so one failing (e.g. a paused
+# project) can never stop the other from being pinged.
 jobs:
-  ping:
+  ping-eztaby:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping EZTaby (splitapp) Supabase project
+        run: |
+          curl -sf -o /dev/null -w "EZTaby ping: %{http_code}\n" \
+            "https://hiypdbbywxrwqgzpmgux.supabase.co/rest/v1/_keepalive?select=id&limit=1" \
+            -H "apikey: ${{ secrets.EZTABY_SUPABASE_KEY }}"
+
+  ping-maxword:
     runs-on: ubuntu-latest
     steps:
       - name: Ping MaxWord Supabase project
@@ -18,17 +29,12 @@ jobs:
             "https://dowhlyoufjmespcwyrke.supabase.co/rest/v1/_keepalive?select=id&limit=1" \
             -H "apikey: ${{ secrets.MAXWORD_SUPABASE_KEY }}"
 
-      - name: Ping EZTaby (splitapp) Supabase project
-        run: |
-          curl -sf -o /dev/null -w "EZTaby ping: %{http_code}\n" \
-            "https://hiypdbbywxrwqgzpmgux.supabase.co/rest/v1/_keepalive?select=id&limit=1" \
-            -H "apikey: ${{ secrets.EZTABY_SUPABASE_KEY }}"
-
-      # GitHub switches off scheduled workflows after 60 days without repo
-      # commits. Re-enabling this workflow resets that 60-day timer, so the
-      # keep-alive keeps itself alive.
+  # GitHub switches off scheduled workflows after 60 days without repo
+  # commits. Re-enabling this workflow resets that 60-day timer.
+  reset-github-timer:
+    runs-on: ubuntu-latest
+    steps:
       - name: Reset GitHub's 60-day inactivity timer
-        if: always()
         env:
           GH_TOKEN: ${{ github.token }}
         run: gh workflow enable "Supabase Keep-Alive" --repo "${{ github.repository }}"
